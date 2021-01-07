@@ -11,7 +11,7 @@ object MongoDatabase {
   // Getting mongodb database
   val database: MongoDatabase = mongoClient.getDatabase(databaseName)
   val registrationCollection = sys.env("register_collection_name")
-  val chatCollection = sys.env("register_collection_name")
+  val chatCollection = sys.env("chat_collection")
   // Getting mongodb collection
   val collectionForUserRegistration: MongoCollection[Document] = database.getCollection(registrationCollection)
   collectionForUserRegistration.drop()
