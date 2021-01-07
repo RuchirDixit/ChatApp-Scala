@@ -25,7 +25,7 @@ object Database_service {
       }
       else
       {
-        val future = MongoDatabase.collectionForChat.insertOne(userToBeAdded).toFuture()
+        val future = MongoDatabase.collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
         Await.result(future,10.seconds)
         "Success"
       }
