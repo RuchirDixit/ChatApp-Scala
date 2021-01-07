@@ -6,7 +6,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
+import authentikat.jwt.JsonWebToken
 import com.bridgelabz.Main.Main.actorSystem
 import com.bridgelabz.{Chat, SaveToDatabaseActor, TokenAuthorization, User}
 import com.nimbusds.jose.JWSObject
@@ -25,13 +26,14 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
   val routes: Route =
     pathPrefix("user") {
       // for login using post request,
-      // It accepts name and password as body and token as header
+      // It accepts name and password as body and generates jwt token based on name
       // returns success on successful login or else returns unauthorized
       path("login") {
         (post & entity(as[User])) { loginRequest =>
           logger.info("Login response: " + service.userLogin(loginRequest))
           if (service.userLogin(loginRequest) == "Login Successful") {
-            complete((StatusCodes.OK, "Successfully logged in!"))
+            val token: String = TokenAuthorization.generateToken(loginRequest.name)
+            complete((StatusCodes.OK, token))
           }
           else if (service.userLogin(loginRequest) == "User Not verified") {
             complete(StatusCodes.UnavailableForLegalReasons,"User's Email Id is not verified!")
@@ -40,7 +42,9 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
           }
         }
       } ~
-        // to verify whether user's email id exists or not. If user reaches this path that means his email id is authentic.
+        // to verify user using post request,
+        // It fetches user by decoding the token and updates the isVerified field to true
+        // returns success on successful verification of user and error if verification failed
         path("verify"){
           get {
             parameters('token.as[String],'name.as[String]) {
@@ -52,12 +56,14 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   complete("User successfully verified and registered!")
                 }
                 else {
-                  complete("User could not be verified!")
+                  complete("User could not be verified! Please verify using the mail sent.")
                 }
             }
           }
         } ~
-        // to register user using post request, returns success on successful registration or else returns Cannot registered
+        // to register user using post request,
+        // It generates jwt token on successful registration of user and sends email to user for verification
+        // returns success on successful registration of user or else error message if user already exists
         path("register") {
           (post & entity(as[User])) { createUserRequest =>
             if (service.createUser(createUserRequest) == "User created") {
@@ -81,19 +87,31 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             }
           }
         } ~
-        // to save message into collection by use of actors;
+        // Post request to save message into collection by use of actors;
         // It sends message request data to SaveToDatabaseActor and after saving data receives response and prints it accordingly
-        path("saveMessage") {
-          (post & entity(as[Chat])) { createUserRequest =>
-            val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor],"saeMessageActor")
-            implicit val timeout = Timeout(10.seconds)
-            val futureResponse = saveMessageActor ? createUserRequest
-            val result = Await.result(futureResponse,60.seconds)
-            if (result.equals("Message added")){
-              complete((StatusCodes.OK),"Message sent to receiver!")
-            }
-            else {
-              complete(StatusCodes.BadRequest -> "Message could not be delivered! Try sending all the data correctly again.")
+        // Returns success if message is sent to receiver or else gives error as message not delivered
+//        path("saveMessage") {
+//          (post & entity(as[Chat])) { createUserRequest =>
+//            optionalHeaderValueByName("Authorization").map(token =>
+//              println("Tokeeen isssssss ::::::::: ==============> "+token))
+//            val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor],"saveMessageActor")
+//            implicit val timeout = Timeout(10.seconds)
+//            val futureResponse = saveMessageActor ? createUserRequest
+//            val result = Await.result(futureResponse,60.seconds)
+//            if (result.equals("Message added")){
+//              complete(StatusCodes.OK,"Message sent to receiver!")
+//            }
+//            else {
+//              complete(StatusCodes.BadRequest -> "Message could not be delivered! Try sending all the data correctly again.")
+//            }
+//          }
+//        }
+        path("protectedcontent") {
+          (get & entity(as[User])) { getData =>
+            TokenAuthorization.authenticated { token =>
+              val response = service.protectedContent
+              println(token)
+              complete(getData.name)
             }
           }
         }
