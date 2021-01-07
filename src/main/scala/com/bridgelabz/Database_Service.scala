@@ -1,13 +1,11 @@
 package com.bridgelabz.Main
 
-import com.bridgelabz.User
+import com.bridgelabz.{Chat, User}
 import org.bson.BsonType
 import org.mongodb.scala.Document
 import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Filters._
-
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 object Database_service {
 
@@ -17,17 +15,23 @@ object Database_service {
    * @return : If data is entered successfully then returns SUCCESS or else return FAILURE
    */
   def saveUser(credentials:User) = {
-    val userToBeAdded : Document = Document("name" -> credentials.name, "password" -> credentials.password, "message" -> credentials.message)
-    val ifUserExists = checkIfExists(credentials.name)
-    if(ifUserExists == true)
-    {
-      "Failure"
+    val emailRegexPattern = "^[a-zA-Z0-9+-._]+@[a-zA-Z0-9.-]+$"
+    if(credentials.name.matches(emailRegexPattern)){
+      val userToBeAdded : Document = Document("name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
+      val ifUserExists = checkIfExists(credentials.name)
+      if(ifUserExists == true)
+      {
+        "Failure"
+      }
+      else
+      {
+        val future = MongoDatabase.collectionForChat.insertOne(userToBeAdded).toFuture()
+        Await.result(future,10.seconds)
+        "Success"
+      }
     }
-    else
-    {
-      val future = MongoDatabase.collection.insertOne(userToBeAdded).toFuture()
-      Await.result(future,10.seconds)
-      "Success"
+    else {
+      "Validation Failed"
     }
   }
 
@@ -46,14 +50,31 @@ object Database_service {
     ))
     false
   }
-  // Returns All the users present inside database in the form of future
-  def getUsers() = {
-    MongoDatabase.collection.find().toFuture()
+
+  /**
+   *
+   * @param sendMessageRequest: The data about sender, receiver and the message that is to be send; added to chat-log collection
+   * @return : String "Message sent" to inform that message is saved to database
+   */
+  def saveChatMessage(sendMessageRequest: Chat) : String = {
+    val senderToReceiverMessage : Document = Document("sender" -> sendMessageRequest.sender, "receiver" -> sendMessageRequest.receiver, "message" -> sendMessageRequest.message)
+    val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(senderToReceiverMessage).toFuture()
+    Await.result(chatAddedFuture,60.seconds)
+    "Message sent"
   }
 
-  // Returns user that matches with given email ID and excluded ObjectId while returning
+  // Returns All the users present inside database in the form of future
+  def getUsers() = {
+    MongoDatabase.collectionForUserRegistration.find().toFuture()
+  }
+
+  /**
+   *
+   * @param name : Find user based on name specified
+   * @return : Future of users that are returned using find method from database
+   */
   def getUsersUsingFilter(name : String) = {
-    MongoDatabase.collection.find(equal("name",name)).projection(excludeId()).toFuture()
+    MongoDatabase.collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
   }
 
 }
