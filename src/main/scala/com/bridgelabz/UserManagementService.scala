@@ -69,5 +69,6 @@ class UserManagementService extends LazyLogging{
       "Sending Msg failed"
     }
   }
+  def protectedContent: String  = "This method is secured"
 
 }
