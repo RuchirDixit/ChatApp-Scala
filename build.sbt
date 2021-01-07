@@ -14,5 +14,8 @@ libraryDependencies ++= Seq("com.typesafe.akka" %% "akka-actor" % "2.5.23",
   "org.mongodb.scala" %% "mongo-scala-driver" % "2.7.0",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % Runtime,
-  "org.scalatest" %% "scalatest" % "3.2.2" % Test
+  "org.scalatest" %% "scalatest" % "3.2.2" % Test,
+  "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
+  "com.github.daddykotex" %% "courier" % "3.0.0-M2",
+  "com.nimbusds" % "nimbus-jose-jwt" % "9.3",
 )
