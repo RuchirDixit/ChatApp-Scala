@@ -23,8 +23,8 @@ object TokenAuthorization extends LazyLogging{
 
     val claims = JwtClaimsSet(
       Map(
-        "name" -> username,
-        "expiredAt" -> (System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(tokenExpiryPeriodInDays))
+        "name" -> username
+       // "expiredAt" -> (System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(tokenExpiryPeriodInDays)).toString
       )
     )
     JsonWebToken(header, claims, secretKey)
@@ -40,8 +40,8 @@ object TokenAuthorization extends LazyLogging{
 
       val jwtToken = tokenFromUser.get.split(" ")
       jwtToken(1) match {
-        case token if isTokenExpired(token) =>
-          complete(StatusCodes.Unauthorized -> "Session expired.")
+//        case token if isTokenExpired(token) =>
+//          complete(StatusCodes.Unauthorized -> "Session expired.")
 
         case token if JsonWebToken.validate(token, secretKey) =>
           provide(getClaims(token))
@@ -52,8 +52,8 @@ object TokenAuthorization extends LazyLogging{
   }
 
   // checks whether is token is expired or not
-  private def isTokenExpired(jwt: String): Boolean =
-    getClaims(jwt).get("expiredAt").exists(_.toLong < System.currentTimeMillis())
+//  private def isTokenExpired(jwt: String): Boolean =
+//    getClaims(jwt).get("expiredAt").exists(_.toLong < System.currentTimeMillis())
 
   // Value value inside token or else return empty
   private def getClaims(jwt: String): Map[String, String] =
