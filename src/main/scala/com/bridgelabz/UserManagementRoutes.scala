@@ -53,10 +53,10 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 val updateUserAsVerified = MongoDatabase.collectionForUserRegistration.updateOne(equal("name",name),set("isVerified",true)).toFuture()
                 Await.result(updateUserAsVerified,60.seconds)
                 if(jwsObject.getPayload.toJSONObject.get("name").equals(name)){
-                  complete("User successfully verified and registered!")
+                  complete(StatusCodes.OK,"User successfully verified and registered!")
                 }
                 else {
-                  complete("User could not be verified! Please verify using the mail sent.")
+                  complete(StatusCodes.BadRequest ->"User could not be verified! Please verify using the mail sent.")
                 }
             }
           }
@@ -87,33 +87,32 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             }
           }
         } ~
-        // Post request to save message into collection by use of actors;
-        // It sends message request data to SaveToDatabaseActor and after saving data receives response and prints it accordingly
-        // Returns success if message is sent to receiver or else gives error as message not delivered
-//        path("saveMessage") {
-//          (post & entity(as[Chat])) { createUserRequest =>
-//            optionalHeaderValueByName("Authorization").map(token =>
-//              println("Tokeeen isssssss ::::::::: ==============> "+token))
-//            val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor],"saveMessageActor")
-//            implicit val timeout = Timeout(10.seconds)
-//            val futureResponse = saveMessageActor ? createUserRequest
-//            val result = Await.result(futureResponse,60.seconds)
-//            if (result.equals("Message added")){
-//              complete(StatusCodes.OK,"Message sent to receiver!")
-//            }
-//            else {
-//              complete(StatusCodes.BadRequest -> "Message could not be delivered! Try sending all the data correctly again.")
-//            }
-//          }
-//        }
         path("protectedcontent") {
-          (get & entity(as[User])) { getData =>
+          (get & entity(as[Chat])) { getDataToSaveChats =>
             TokenAuthorization.authenticated { token =>
-              val response = service.protectedContent
-              println(token)
-              complete(getData.name)
+              getDataToSaveChats.setSenderName(token.values.mkString)
+              // TODO : Check id receiver is present in users table or not
+              println("receiver: "+ getDataToSaveChats.receiver)
+              println(Database_service.checkIfExists(getDataToSaveChats.receiver))
+              if(Database_service.checkIfExists(getDataToSaveChats.receiver) == true) {
+                getDataToSaveChats.setReceiverName(getDataToSaveChats.receiver)
+                getDataToSaveChats.setMessage(getDataToSaveChats.message)
+                val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor],"saveActor")
+                implicit val timeout = Timeout(10.seconds)
+                val futureResponse = saveMessageActor ? getDataToSaveChats
+                val result = Await.result(futureResponse,60.seconds)
+                if (result.equals("Message added")) {
+                  complete(StatusCodes.OK,"Message sent to receiver!")
+                }
+                else {
+                  complete(StatusCodes.BadRequest -> "Message could not be delivered! Try sending all the data correctly again.")
+                }
+              }
+              else {
+                complete(StatusCodes.Unauthorized -> "Receiver needs to be a registered user. Please register to continue communication.")
+              }
+            }
             }
           }
         }
-    }
 }
