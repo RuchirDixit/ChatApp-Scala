@@ -18,11 +18,12 @@ object TokenAuthorization extends LazyLogging{
    * @param username : using username field to generate token
    * @return: : String as a token for authentication
    */
-  def generateToken(username: String): String = {
+  def generateToken(username: String,id:Int): String = {
     logger.info("in generate token")
 
     val claims = JwtClaimsSet(
       Map(
+        "id" -> id,
         "name" -> username
        // "expiredAt" -> (System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(tokenExpiryPeriodInDays)).toString
       )
