@@ -7,6 +7,7 @@ import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Filters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import java.util.regex.Pattern;
 object Database_service {
 
   /**
@@ -15,9 +16,9 @@ object Database_service {
    * @return : If data is entered successfully then returns SUCCESS or else return FAILURE
    */
   def saveUser(credentials:User) = {
-    val emailRegexPattern = "^[a-zA-Z0-9+-._]+@[a-zA-Z0-9.-]+$"
-    if(credentials.name.matches(emailRegexPattern)){
-      val userToBeAdded : Document = Document("name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
+    val emailRegexPattern = "^[a-zA-Z]+([+.#&_-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+.[a-zA-Z]{2,3}([.][a-zA-Z]{2,3})*$"
+    if(Pattern.compile(credentials.name).matcher(emailRegexPattern).matches() == true){
+      val userToBeAdded : Document = Document("id" -> credentials.id, "name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
       val ifUserExists = checkIfExists(credentials.name)
       if(ifUserExists == true)
       {
@@ -57,7 +58,7 @@ object Database_service {
    * @return : String "Message sent" to inform that message is saved to database
    */
   def saveChatMessage(sendMessageRequest: Chat) : String = {
-    val senderToReceiverMessage : Document = Document("sender" -> sendMessageRequest.sender, "receiver" -> sendMessageRequest.receiver, "message" -> sendMessageRequest.message)
+    val senderToReceiverMessage : Document = Document("sender" -> sendMessageRequest.sender, "receiver" -> sendMessageRequest.receiver, "message" -> sendMessageRequest.message, "groupChatName" -> sendMessageRequest.groupChatName)
     val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(senderToReceiverMessage).toFuture()
     Await.result(chatAddedFuture,60.seconds)
     "Message sent"
@@ -76,5 +77,6 @@ object Database_service {
   def getUsersUsingFilter(name : String) = {
     MongoDatabase.collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
   }
+
 
 }
