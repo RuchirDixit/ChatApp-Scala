@@ -10,8 +10,8 @@ import akka.pattern.ask
 import akka.util.Timeout
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.bridgelabz.{ChatCase, EmailNotificationActor, JsonResponse, Messages,
-  MyJsonProtocol, MyJsonResponse, SaveToDatabaseActor, TokenAuthorization, User}
+import com.bridgelabz.{ChatCase, EmailNotificationActor, GroupChat, GroupMessages,
+  JsonResponse, Messages, MyJsonProtocol, MyJsonResponse, SaveToDatabaseActor, TokenAuthorization, User}
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
@@ -23,8 +23,8 @@ import org.mongodb.scala.model.Updates.set
 import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
-class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging with
-  MyJsonProtocol with MyJsonResponse {
+class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
+  with MyJsonProtocol with MyJsonResponse {
   val system = ActorSystem("Chat-App")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
@@ -110,7 +110,12 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               logger.info("Create response::" + userCreatedResponse)
               if (userCreatedResponse == "User created") {
                 logger.info("User object in register:" + createUserRequest)
-                val token: String = TokenAuthorization.generateToken(createUserRequest.name, createUserRequest.id)
+                val a:Option[Any] = Some(createUserRequest.id)
+                val id = (a match {
+                  case Some(x:Int) => x // this extracts the value in a as an Int
+                  case _ => Int.MinValue
+                })
+                val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
                 val mailer = Mailer(sys.env("mailer"), sys.env("smtp_port").toInt)
                   .auth(true)
                   .as(sys.env("sender_email"), sys.env("sender_password"))
@@ -155,7 +160,6 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   val userService = new UserManagementService
                   val groupChatName = userService.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
                   val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
-
                   implicit val timeout = Timeout(10.seconds)
                   val futureResponse = saveMessageActor ? saveToChat
                   val result = Await.result(futureResponse, 60.seconds)
@@ -174,40 +178,47 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
           } ~
           /**
            * For getting token and decoding username of sender from token
-           * @input: It accepts token as authorization parameter, and sender, receiver and message to save
-           * It checks if receiver is a registered user if not throws message to register, if yes Saved message to Database
+           * @input: It accepts token as authorization parameter, receiver (groupname) and message to save
+           * It saves messages from sender to a particular group mentioned by user
            * @return:  success message if message delivered or error message if not delivered.
            */
           path("groupChat") {
-            (post & entity(as[ChatCase])) { getDataToSaveChats =>
+            (post & entity(as[GroupChat])) { groupData =>
               TokenAuthorization.authenticated { token =>
-                logger.info("Token:" + token.values.toList.last.toString())
-                logger.info("receiver: " + getDataToSaveChats.receiver)
-                println(Database_service.checkIfExists(getDataToSaveChats.receiver))
-                if (Database_service.checkIfExists(getDataToSaveChats.receiver) == true) {
-                  val receiverId = service.returnId(getDataToSaveChats.receiver)
-                  val senderId = token.values.toList.head.toString
-                  val userService = new UserManagementService
-                  val groupChatName = userService.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
-                  val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
-                  val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
-                  implicit val timeout = Timeout(10.seconds)
-                  val futureResponse = saveMessageActor ? saveToChat
-                  val result = Await.result(futureResponse, 60.seconds)
-                  if (result.equals("Message added")) {
-                    complete(StatusCodes.OK, JsonResponse("Message sent to receiver!"))
-                  }
-                  else {
-                    complete(StatusCodes.BadRequest -> JsonResponse("Message could not be delivered! Try sending all the data correctly again."))
-                  }
+                logger.info("Token with sender:" + token.values.toList.last.toString())
+                val groupChatInformation = groupData.copy(sender = Some(token.values.toList.last.toString()))
+                val response = service.saveGroupChat(groupChatInformation)
+                if(response.equals("Message added")){
+                  complete(StatusCodes.OK,JsonResponse("Message sent in Group!"))
                 }
                 else {
-                  complete(StatusCodes.Unauthorized -> JsonResponse("Receiver needs to be a registered user. Please register to continue communication."))
+                  complete(StatusCodes.BadRequest,JsonResponse("Message could not be sent."))
                 }
               }
             }
           } ~
+
           /**
+           * It displays all the messages with their senders in the group
+           * @input : It accepts group name for which all messages are to be displayed
+           *  @returns: All the messages with sender, group name and messages in Json format
+           */
+          path("groupMessages") {
+            (post & entity(as[GroupMessages])) { messageRequest =>
+              try {
+                val groupname = messageRequest.groupName
+                val messagesByGroupName = MongoDatabase.collectionForGroup.find(equal("receiver", groupname)).toFuture()
+                val groupmessages = Await.result(messagesByGroupName, 60.seconds)
+                logger.info("Group Messages:" + groupmessages)
+                complete(groupmessages)
+              }
+              catch {
+                case _: TimeoutException =>
+                  complete(JsonResponse("Reading file timeout."))
+              }
+            }
+          } ~
+           /**
            * It accepts single slash as input if given by user
            * @return Response to enter proper URL.
            */
