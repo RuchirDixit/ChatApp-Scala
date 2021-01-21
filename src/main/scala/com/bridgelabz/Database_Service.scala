@@ -1,17 +1,19 @@
 
 package com.bridgelabz.Main
 
-import com.bridgelabz.{ChatCase, User}
+import com.bridgelabz.{ChatCase, GroupChat, JsonResponse, User}
 import org.bson.BsonType
 import org.mongodb.scala.Document
 import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Filters._
-import scala.concurrent.{Await, Future}
+
+import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration._
 import java.util.regex.Pattern
 import com.typesafe.scalalogging.LazyLogging
 
 object Database_service extends LazyLogging {
+
   /**
    *
    * @param credentials : Data about the user that is getting stored in database
@@ -21,7 +23,16 @@ object Database_service extends LazyLogging {
     val emailRegexPattern = "^[a-zA-Z]+([+.#&_-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+.[a-zA-Z]{2,3}([.][a-zA-Z]{2,3})*$"
     if(Pattern.compile(emailRegexPattern).matcher(credentials.name).matches()){
       logger.info("Email valid!")
-      val userToBeAdded : Document = Document("id" -> credentials.id, "name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
+      var length = 0
+      try {
+        val users = Await.result(getUsers(),120.seconds)
+        length = users.length
+      }
+      catch {
+        case _: TimeoutException =>
+          logger.info("Timeout!")
+      }
+      val userToBeAdded : Document = Document("id" -> Some(length+1), "name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
       val ifUserExists = checkIfExists(credentials.name)
       if(ifUserExists)
       {
@@ -81,5 +92,17 @@ object Database_service extends LazyLogging {
    */
   def getUsersUsingFilter(name : String) : Future[Seq[Document]] = {
     MongoDatabase.collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
+  }
+
+  /**
+   *
+   * @param groupChatInfo : Information about sender, receiver and message from group chat
+   * @return : String message that message has been sent inside group
+   */
+  def saveToGroupChat(groupChatInfo: GroupChat) : String = {
+    val data = GroupChat(groupChatInfo.sender,groupChatInfo.receiver,groupChatInfo.message)
+    val chatAddedFuture = MongoDatabase.collectionForGroup.insertOne(data).toFuture()
+    Await.result(chatAddedFuture,60.seconds)
+    "Message sent to group"
   }
 }
