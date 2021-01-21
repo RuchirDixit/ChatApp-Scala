@@ -19,7 +19,7 @@ package com.bridgelabz.Main
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
-import com.bridgelabz.{ChatCase, EmailNotificationActor, User}
+import com.bridgelabz.{ChatCase, EmailNotificationActor, GroupChat, User}
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
 import javax.mail.internet.InternetAddress
@@ -30,6 +30,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 class UserManagementService extends LazyLogging {
+
   val system = ActorSystem("Chat-App-Service")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   /**
@@ -149,6 +150,21 @@ class UserManagementService extends LazyLogging {
         case Success(_) => logger.info("Email notification Sent!")
         case Failure(_) => complete(StatusCodes.NotFound,"Failed To Deliver Notification!")
       }
+  }
+
+  /**
+   *
+   * @param groupChatInfo : Information about sender, receiver and message in group chat
+   * @return : String message if message is added to group or not
+   */
+  def saveGroupChat(groupChatInfo:GroupChat) : String = {
+    val status = Database_service.saveToGroupChat(groupChatInfo)
+    if(status.equals("Message sent to group")){
+      "Message added"
+    }
+    else {
+      "Failed to send message"
+    }
   }
 
 }
