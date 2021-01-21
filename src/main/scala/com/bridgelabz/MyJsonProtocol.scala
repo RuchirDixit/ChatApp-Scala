@@ -7,4 +7,5 @@ import spray.json.DefaultJsonProtocol
 // To convert object into json format
 trait MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val templateFormat = jsonFormat4(ChatCase)
+  implicit val templateFormatGroup = jsonFormat3(GroupChat)
 }
