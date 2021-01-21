@@ -1,21 +1,10 @@
+
 package com.bridgelabz
-import play.api.libs.json._
 
-object MyJsonProtocol{
-  implicit object ColorJsonFormat extends Format[Chat] {
-    def writes(c: Chat) : JsValue = {
-      val chatSeq = Seq (
-        "sender" -> JsString(c.sender),
-        "receiver" -> JsString(c.receiver),
-        "message" -> JsString(c.message),
-        "groupChatName" -> JsString(c.groupChatName),
-      )
-      JsObject(chatSeq)
-    }
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import spray.json.DefaultJsonProtocol
 
-
-    def reads(value: JsValue) = {
-      JsSuccess(Chat("","","",""))
-    }
-  }
+// To convert object into json format
+trait MyJsonProtocol extends SprayJsonSupport with DefaultJsonProtocol {
+  implicit val templateFormat = jsonFormat4(ChatCase)
 }
