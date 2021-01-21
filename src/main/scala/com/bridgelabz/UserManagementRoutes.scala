@@ -1,29 +1,17 @@
-// Copyright (C) 2011-2012 the original author or authors.
-// See the LICENCE.txt file distributed with this work for additional
-// information regarding copyright ownership.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 
-// http://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 package com.bridgelabz.Main
 
 import akka.actor.{ActorSystem, Props}
+import akka.http.scaladsl.model.headers.RawHeader
 
 import concurrent.duration._
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{StatusCodes, headers}
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.bridgelabz.{ChatCase, EmailNotificationActor, JsonResponse, MyJsonProtocol, MyJsonResponse, SaveToDatabaseActor, TokenAuthorization, User}
+import com.bridgelabz.{ChatCase, EmailNotificationActor, JsonResponse, Messages,
+  MyJsonProtocol, MyJsonResponse, SaveToDatabaseActor, TokenAuthorization, User}
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
@@ -35,9 +23,11 @@ import org.mongodb.scala.model.Updates.set
 import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
-class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging with MyJsonProtocol with MyJsonResponse{
+class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging with
+  MyJsonProtocol with MyJsonResponse {
   val system = ActorSystem("Chat-App")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
   val routes: Route =
     pathPrefix("user") {
         /**
@@ -51,7 +41,9 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             if (service.userLogin(loginRequest) == "Login Successful") {
               val id = service.returnId(loginRequest.name)
               val token: String = TokenAuthorization.generateToken(loginRequest.name, id)
-              complete((StatusCodes.OK, token))
+              respondWithHeaders(RawHeader("token",token)) {
+                complete(StatusCodes.OK)
+              }
             }
             else if (service.userLogin(loginRequest) == "User Not verified") {
               complete(StatusCodes.UnavailableForLegalReasons,JsonResponse("User's Email Id is not verified!"))
@@ -90,19 +82,19 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
          * @return : All the messages on success and error if group chat name not found
          */
         path("messages") {
-          get {
-            parameters('roomname.as[String]) {
-              (roomname) =>
-                try {
-                  val messagesByGroupName = MongoDatabase.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
-                  val messages = Await.result(messagesByGroupName, 60.seconds)
-                  logger.info("Messages:" + messages)
-                  complete(messages)
-                }
-                catch {
-                  case _: TimeoutException =>
-                    complete(JsonResponse("Reading file timeout."))
-                }
+          (post & entity(as[Messages])) { messageRequest =>
+            try {
+              val senderId = service.returnId(messageRequest.sender)
+              val receiverId = service.returnId(messageRequest.receiver)
+              val roomname = service.generateGroupChatName(messageRequest.sender, messageRequest.receiver, senderId.toString, receiverId)
+              val messagesByGroupName = MongoDatabase.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
+              val messages = Await.result(messagesByGroupName, 60.seconds)
+              logger.info("Messages:" + messages)
+              complete(messages)
+            }
+            catch {
+              case _: TimeoutException =>
+                complete(JsonResponse("Reading file timeout."))
             }
           }
         } ~
@@ -163,7 +155,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   val userService = new UserManagementService
                   val groupChatName = userService.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
                   val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
-                  val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
+
                   implicit val timeout = Timeout(10.seconds)
                   val futureResponse = saveMessageActor ? saveToChat
                   val result = Await.result(futureResponse, 60.seconds)
