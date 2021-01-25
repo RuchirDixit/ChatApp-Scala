@@ -197,8 +197,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               }
             }
           } ~
-
-          /**
+        /**
            * It displays all the messages with their senders in the group
            * @input : It accepts group name for which all messages are to be displayed
            *  @returns: All the messages with sender, group name and messages in Json format
