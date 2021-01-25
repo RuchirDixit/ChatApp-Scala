@@ -6,14 +6,12 @@ import org.bson.BsonType
 import org.mongodb.scala.Document
 import org.mongodb.scala.model.Projections._
 import org.mongodb.scala.model.Filters._
-
 import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration._
 import java.util.regex.Pattern
 import com.typesafe.scalalogging.LazyLogging
 
 object Database_service extends LazyLogging {
-
   /**
    *
    * @param credentials : Data about the user that is getting stored in database
