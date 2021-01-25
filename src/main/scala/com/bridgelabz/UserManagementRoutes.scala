@@ -217,6 +217,20 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               }
             }
           } ~
+          /**
+           * It displays all the group names that user can send messages to
+           * @input : It accepts sender name decoded from token
+           *  @returns: All the messages with sender, group name and messages
+           */
+          path("viewGroups") {
+            post {
+              TokenAuthorization.authenticated { token =>
+                val sender = token.values.toList.last.toString()
+                val groupsOfSender = MongoDatabase.collectionForGroup.find(equal("sender", sender)).toFuture()
+                complete(groupsOfSender)
+              }
+            }
+          } ~
            /**
            * It accepts single slash as input if given by user
            * @return Response to enter proper URL.
