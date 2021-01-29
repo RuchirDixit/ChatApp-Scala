@@ -11,12 +11,18 @@
 4) Dependencies used
 
 
+
 1. **Scala version : 2.12.2** <br><br>
 2. **Sbt version : 1.3.8**<br><br>
 
-3. `Steps to run:` <br>
-`1) Run Main inside main package in com.bridgelabz package `
-<br><br>
+3. `Steps to run project:` <br>
+`1) sbt run `
+
+    `Steps to run test files:` <br>
+    `1) sbt test `
+
+     `To generate coverage report:` <br>
+      `1) sbt coverageReport`
 
 4. ### Dependencies used:
 1) Akka actors - 2.5.20
