@@ -9,7 +9,7 @@
 2) Sbt version
 3) Steps to run
 4) Dependencies used
-
+5) Features
 
 
 1. **Scala version : 2.12.2** <br><br>
@@ -34,3 +34,9 @@
 7) akka-http-play-json - 1.20.0
 8) mongo-scala driver - 2.7.0
 9) courier - 3.0.0-M2
+<br><br>
+
+5. #### Features:
+    a) User can register and login <br>
+    b) Users can send messages to individuals registered with application <br>
+    c) Users can create groups and view all groups user is added into
