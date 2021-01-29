@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
-import com.bridgelabz.actors.{EmailNotificationActor, SaveToDatabaseActor}
+import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor, SaveToDatabaseActor}
 import com.bridgelabz.caseClasses._
 import com.bridgelabz.database.MongoDatabase
 import com.bridgelabz.jwt.TokenAuthorization
@@ -28,7 +28,8 @@ import scala.util.{Failure, Success}
 
 class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
   with MyJsonProtocol with MyJsonResponse {
-  val system = ActorSystem("Chat-App")
+  implicit val system = ActorSystemFactory.system
+  //val system = ActorSystem("Chat-App")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
   val routes: Route =
@@ -49,8 +50,10 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               }
             }
             else if (service.userLogin(loginRequest) == "User Not verified") {
+              logger.error("User's email not verified")
               complete(StatusCodes.UnavailableForLegalReasons,JsonResponse("User's Email Id is not verified!"))
             } else {
+              logger.error("Invalid credentials")
               complete(StatusCodes.Unauthorized, JsonResponse("Invalid credentials. User not found! Try again with correct details."))
             }
           }
@@ -73,6 +76,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   complete(StatusCodes.OK, JsonResponse("User successfully verified and registered!"))
                 }
                 else {
+                  logger.error("user not verified.")
                   complete(StatusCodes.BadRequest -> JsonResponse("User could not be verified! Please verify using the mail sent."))
                 }
             }
@@ -97,6 +101,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             }
             catch {
               case _: TimeoutException =>
+                logger.error("Timeout exception for getting messages on roomname")
                 complete(JsonResponse("Reading file timeout."))
             }
           }
@@ -132,15 +137,21 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   .onComplete {
                     case Success(_) =>
                       val schedulerActor = system.actorOf(Props[EmailNotificationActor], "schedulerActor")
+                      // TODO: time not hardcoded
                       system.scheduler.schedule(30.seconds, 120.seconds, schedulerActor, createUserRequest.name)
                       logger.info("Message delivered. Email verified!")
-                    case Failure(_) => complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
+                      // TODO: loggers in failure part
+                    case Failure(_) =>
+                      logger.error("Failed to deliver mail.")
+                      complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
                   }
                 complete((StatusCodes.OK,JsonResponse("User Registered! Now you can Login using these details.")))
               } else if (userCreatedResponse == "User Validation Failed") {
+                logger.error("Email address not correct according to pattern")
                 complete(StatusCodes.BadRequest -> JsonResponse("Error! Please enter correct email address."))
               }
               else {
+                logger.error("User already exists")
                 complete(StatusCodes.Unauthorized, JsonResponse("Error! User already exists!"))
               }
             }
@@ -170,10 +181,12 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                     complete(StatusCodes.OK, JsonResponse("Message sent to receiver!"))
                   }
                   else {
+                    logger.error("Message could not be delivered")
                     complete(StatusCodes.BadRequest -> JsonResponse("Message could not be delivered! Try sending all the data correctly again."))
                   }
                 }
                 else {
+                  logger.error("Receiver need to be a registered user")
                   complete(StatusCodes.Unauthorized -> JsonResponse("Receiver needs to be a registered user. Please register to continue communication."))
                 }
               }
@@ -192,9 +205,11 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 val groupChatInformation = groupData.copy(sender = Some(token.values.toList.last.toString()))
                 val response = service.saveGroupChat(groupChatInformation)
                 if(response.equals("Message added")){
+                  logger.info("Message send to group successfully.")
                   complete(StatusCodes.OK,JsonResponse("Message sent in Group!"))
                 }
                 else {
+                  logger.error("Message could not be sent to group.")
                   complete(StatusCodes.BadRequest,JsonResponse("Message could not be sent."))
                 }
               }
@@ -216,6 +231,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               }
               catch {
                 case _: TimeoutException =>
+                  logger.error("Timeout exception while reading data")
                   complete(JsonResponse("Reading file timeout."))
               }
             }
@@ -230,6 +246,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               TokenAuthorization.authenticated { token =>
                 val sender = token.values.toList.last.toString()
                 val groupsOfSender = MongoDatabase.collectionForGroup.find(equal("sender", sender)).toFuture()
+                logger.info("groups in which sender is added: " + groupsOfSender)
                 complete(groupsOfSender)
               }
             }
