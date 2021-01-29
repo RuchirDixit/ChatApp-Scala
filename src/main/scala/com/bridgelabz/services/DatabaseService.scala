@@ -2,7 +2,9 @@
 package com.bridgelabz.services
 
 import java.util.regex.Pattern
-import com.bridgelabz.caseClasses.{ChatCase, GroupChat, User}
+
+import akka.http.scaladsl.server.Directives.complete
+import com.bridgelabz.caseClasses.{ChatCase, GroupChat, JsonResponse, User}
 import com.bridgelabz.database.MongoDatabase
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType
@@ -14,7 +16,7 @@ import com.bridgelabz.traits.DatabaseService
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, TimeoutException}
 
-object Database_service extends LazyLogging with DatabaseService {
+object DatabaseService extends LazyLogging with DatabaseService {
   /**
    *
    * @param credentials : Data about the user that is getting stored in database
@@ -43,8 +45,15 @@ object Database_service extends LazyLogging with DatabaseService {
       else
       {
         val future = MongoDatabase.collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
-        Await.result(future,10.seconds)
-        "Success"
+        try{
+          Await.result(future,10.seconds)
+          "Success"
+        }
+        catch {
+          case _:TimeoutException =>
+            logger.error("Timeout while added data to users")
+            "Failure"
+        }
       }
     }
     else {
@@ -59,15 +68,22 @@ object Database_service extends LazyLogging with DatabaseService {
    * @return : If user already exists it returns true or else it returns false
    */
   def checkIfExists(name : String): Boolean = {
-    val data = Await.result(getUsers(),10.seconds)
-    data.foreach(document => document.foreach(bsonObject =>
-      if(bsonObject._2.getBsonType() == BsonType.STRING){
-        if(bsonObject._2.asString().getValue().equals(name)) {
-          return true
+    try {
+      val users = Await.result(getUsers(),10.seconds)
+      users.foreach(document => document.foreach(bsonObject =>
+        if(bsonObject._2.getBsonType() == BsonType.STRING){
+          if(bsonObject._2.asString().getValue().equals(name)) {
+            return true
+          }
         }
-      }
-    ))
-    false
+      ))
+      false
+    }
+    catch {
+      case _: TimeoutException =>
+        logger.error("Timeout exception for getting users")
+        false
+    }
   }
 
   /**
@@ -76,8 +92,8 @@ object Database_service extends LazyLogging with DatabaseService {
    * @return : String "Message sent" to inform that message is saved to database
    */
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
-    val data = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
-    val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(data).toFuture()
+    val chatMessage = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
+    val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(chatMessage).toFuture()
     Await.result(chatAddedFuture,60.seconds)
     "Message sent"
   }
@@ -102,9 +118,16 @@ object Database_service extends LazyLogging with DatabaseService {
    * @return : String message that message has been sent inside group
    */
   def saveToGroupChat(groupChatInfo: GroupChat) : String = {
-    val data = GroupChat(groupChatInfo.sender,groupChatInfo.receiver,groupChatInfo.message)
-    val chatAddedFuture = MongoDatabase.collectionForGroup.insertOne(data).toFuture()
-    Await.result(chatAddedFuture,60.seconds)
-    "Message sent to group"
+    try{
+      val groupChat = GroupChat(groupChatInfo.sender,groupChatInfo.receiver,groupChatInfo.message)
+      val chatAddedFuture = MongoDatabase.collectionForGroup.insertOne(groupChat).toFuture()
+      Await.result(chatAddedFuture,60.seconds)
+      "Message sent to group"
+    }
+    catch {
+      case _:TimeoutException =>
+        logger.error("Timeout while adding data to group")
+        "Timeout"
+    }
   }
 }
