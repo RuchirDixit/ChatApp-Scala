@@ -10,11 +10,11 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
   // Test case To check if user exists
   "Check if exists" should {
     "return true" in {
-      val status = Database_service.checkIfExists("ruchirtd96@gmail.com")
+      val status = DatabaseService.checkIfExists("ruchirtd96@gmail.com")
       assert(status == true)
     }
     "return false" in {
-      val status = Database_service.checkIfExists("abc@gmail.com")
+      val status = DatabaseService.checkIfExists("abc@gmail.com")
       assert(status == false)
     }
   }
@@ -23,7 +23,7 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
   "On Successful user added" should {
     "return Success" in {
       val data = User(Some(1),"xyz@gmail.com","1234",Some(false))
-      val status = Database_service.saveUser(data)
+      val status = DatabaseService.saveUser(data)
       if(status == "Failure") {
         assert(status == "Failure")
       }
@@ -33,7 +33,7 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
     }
     "return Validation Failed" in {
       val data = User(Some(1),"@gmail.com","1234",Some(false))
-      val status = Database_service.saveUser(data)
+      val status = DatabaseService.saveUser(data)
       assert(status == "Validation Failed")
     }
   }
@@ -42,7 +42,7 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
   "On Successful chat sent" should {
     "return Message sent" in {
       val data = ChatCase(Some("ruchirtd96@gmail.com"),"ruchircool007@gmail.com","Test case",Some(""))
-      val status = Database_service.saveChatMessage(data)
+      val status = DatabaseService.saveChatMessage(data)
       assert(status == "Message sent")
     }
   }
