@@ -17,20 +17,15 @@ object MongoDatabase {
     CodecRegistries.fromProviders(chatCodecProvider,groupCodecProvider),
     DEFAULT_CODEC_REGISTRY
   )
-  //implicit val system = ActorSystem("Scala_jwt-App")
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
   val mongoClient: MongoClient = MongoClient()
-  //val databaseName = sys.env("database_name")
   val databaseName = "ChatApp"
   // Getting mongodb database
   val database: MongoDatabase = mongoClient.getDatabase(databaseName).withCodecRegistry(codecRegistry)
-  //val registrationCollection = sys.env("register_collection_name")
-  val registrationCollection = "users"
- // val chatCollection = sys.env("chat_collection")
- val chatCollection = "chat_logs"
-  //val groupCollection = sys.env("group-collection")
-  val groupCollection = "group-chats"
+  val registrationCollection = sys.env("register_collection_name")
+  val chatCollection = sys.env("chat_collection")
+  val groupCollection = sys.env("group-collection")
   // Getting mongodb collection
   val collectionForUserRegistration: MongoCollection[Document] = database.getCollection(registrationCollection)
   collectionForUserRegistration.drop()
