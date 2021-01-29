@@ -1,7 +1,7 @@
 # Chat app using akka http
 
-####Chat app which can send and receive messages to and from registered user. Actor is used to send messages using POST and to get messages using GET request.
-#####Users can have one to one chats ans well as group chat and get all the names of group user has been added to.
+#### Chat app which can send and receive messages to and from registered user. Actor is used to send messages using POST and to get messages using GET request.
+##### Users can have one to one chats ans well as group chat and get all the names of group user has been added to.
 <hr>
 
 ### <u>Table of contents:</u>
@@ -24,7 +24,7 @@
      `To generate coverage report:` <br>
       `1) sbt coverageReport`
 
-4. ### Dependencies used:
+4. #### Dependencies used:
 1) Akka actors - 2.5.20
 2) Akka testkit - 2.5.20
 3) Akka stream - 2.5.20
