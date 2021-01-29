@@ -2,15 +2,23 @@
 
 ####Chat app which can send and receive messages to and from registered user. Actor is used to send messages using POST and to get messages using GET request.
 #####Users can have one to one chats ans well as group chat and get all the names of group user has been added to.
+<hr>
 
-**Scala version : 2.12.2 <br>
-Sbt version : 1.3.8**
+### <u>Table of contents:</u>
+1) Scala version
+2) Sbt version
+3) Steps to run
+4) Dependencies used
 
-`Steps to run:` <br>
+
+1. **Scala version : 2.12.2** <br><br>
+2. **Sbt version : 1.3.8**<br><br>
+
+3. `Steps to run:` <br>
 `1) Run Main inside main package in com.bridgelabz package `
+<br><br>
 
-
-###Dependencies used:
+4. ### Dependencies used:
 1) Akka actors - 2.5.20
 2) Akka testkit - 2.5.20
 3) Akka stream - 2.5.20
