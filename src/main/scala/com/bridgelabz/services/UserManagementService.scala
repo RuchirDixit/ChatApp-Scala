@@ -4,6 +4,7 @@ package com.bridgelabz.services
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
+import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseClasses.{ChatCase, GroupChat, User}
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
@@ -16,7 +17,8 @@ import scala.util.{Failure, Success}
 
 class UserManagementService extends LazyLogging {
 
-  val system = ActorSystem("Chat-App-Service")
+  implicit val system = ActorSystemFactory.system
+  //val system = ActorSystem("Chat-App-Service")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   /**
    *
