@@ -13,7 +13,7 @@ import com.bridgelabz.caseClasses._
 import com.bridgelabz.database.MongoDatabase
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{MyJsonProtocol, MyJsonResponse}
-import com.bridgelabz.services.{Database_service, UserManagementService}
+import com.bridgelabz.services.{DatabaseService, UserManagementService}
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
@@ -29,7 +29,6 @@ import scala.util.{Failure, Success}
 class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
   with MyJsonProtocol with MyJsonResponse {
   implicit val system = ActorSystemFactory.system
-  //val system = ActorSystem("Chat-App")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
   val routes: Route =
@@ -120,7 +119,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 logger.info("User object in register:" + createUserRequest)
                 val a:Option[Any] = Some(createUserRequest.id)
                 val id = (a match {
-                  case Some(x:Int) => x // this extracts the value in a as an Int
+                  case Some(x:Int) => x
                   case _ => Int.MinValue
                 })
                 val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
@@ -137,10 +136,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   .onComplete {
                     case Success(_) =>
                       val schedulerActor = system.actorOf(Props[EmailNotificationActor], "schedulerActor")
-                      // TODO: time not hardcoded
                       system.scheduler.schedule(30.seconds, 120.seconds, schedulerActor, createUserRequest.name)
                       logger.info("Message delivered. Email verified!")
-                      // TODO: loggers in failure part
                     case Failure(_) =>
                       logger.error("Failed to deliver mail.")
                       complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
@@ -167,8 +164,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               TokenAuthorization.authenticated { token =>
                 logger.info("Token:" + token.values.toList.last.toString())
                 logger.info("receiver: " + getDataToSaveChats.receiver)
-                println(Database_service.checkIfExists(getDataToSaveChats.receiver))
-                if (Database_service.checkIfExists(getDataToSaveChats.receiver) == true) {
+                if (DatabaseService.checkIfExists(getDataToSaveChats.receiver) == true) {
                   val receiverId = service.returnId(getDataToSaveChats.receiver)
                   val senderId = token.values.toList.head.toString
                   val userService = new UserManagementService
