@@ -2,7 +2,7 @@
 package com.bridgelabz.services
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.bridgelabz.caseClasses.{ChatCase, User}
+import com.bridgelabz.caseclasses.{ChatCase, User}
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 

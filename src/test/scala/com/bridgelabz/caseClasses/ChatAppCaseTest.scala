@@ -1,5 +1,5 @@
 
-package com.bridgelabz.caseClasses
+package com.bridgelabz.caseclasses
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.matchers.should

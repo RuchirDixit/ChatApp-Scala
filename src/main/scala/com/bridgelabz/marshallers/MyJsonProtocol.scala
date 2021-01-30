@@ -2,7 +2,7 @@
 package com.bridgelabz.marshallers
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import com.bridgelabz.caseClasses.{ChatCase, GroupChat}
+import com.bridgelabz.caseclasses.{ChatCase, GroupChat}
 import spray.json.DefaultJsonProtocol
 
 // To convert object into json format
