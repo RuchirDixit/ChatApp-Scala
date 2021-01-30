@@ -1,7 +1,7 @@
 
 package com.bridgelabz.traits
 
-import com.bridgelabz.caseClasses.{ChatCase, GroupChat, User}
+import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
 import org.mongodb.scala.Document
 import scala.concurrent.Future
 

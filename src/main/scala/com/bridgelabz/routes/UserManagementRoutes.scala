@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor, SaveToDatabaseActor}
-import com.bridgelabz.caseClasses._
+import com.bridgelabz.caseclasses._
 import com.bridgelabz.database.MongoDatabase
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{MyJsonProtocol, MyJsonResponse}

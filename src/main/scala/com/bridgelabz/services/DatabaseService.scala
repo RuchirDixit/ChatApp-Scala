@@ -4,7 +4,7 @@ package com.bridgelabz.services
 import java.util.regex.Pattern
 
 import akka.http.scaladsl.server.Directives.complete
-import com.bridgelabz.caseClasses.{ChatCase, GroupChat, JsonResponse, User}
+import com.bridgelabz.caseclasses.{ChatCase, GroupChat, JsonResponse, User}
 import com.bridgelabz.database.MongoDatabase
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType

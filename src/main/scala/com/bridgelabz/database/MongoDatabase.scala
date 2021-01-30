@@ -1,9 +1,8 @@
 
 package com.bridgelabz.database
 
-import akka.actor.ActorSystem
 import com.bridgelabz.actors.ActorSystemFactory
-import com.bridgelabz.caseClasses.{ChatCase, GroupChat}
+import com.bridgelabz.caseclasses.{ChatCase, GroupChat}
 import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.bson.codecs.{DEFAULT_CODEC_REGISTRY, Macros}
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
