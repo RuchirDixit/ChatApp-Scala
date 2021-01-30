@@ -2,7 +2,7 @@
 package com.bridgelabz.actors
 
 import akka.actor.Actor
-import com.bridgelabz.caseClasses.ChatCase
+import com.bridgelabz.caseclasses.ChatCase
 import com.bridgelabz.services.UserManagementService
 import com.typesafe.scalalogging.LazyLogging
 
