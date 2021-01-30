@@ -1,5 +1,5 @@
 
-package com.bridgelabz.caseClasses
+package com.bridgelabz.caseclasses
 
 import play.api.libs.json.{Json, Reads}
 

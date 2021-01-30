@@ -1,5 +1,5 @@
 
-package com.bridgelabz.caseClasses
+package com.bridgelabz.caseclasses
 
 case class GroupChat(
                       sender:Option[String],
