@@ -34,7 +34,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
   val routes: Route =
     pathPrefix("user") {
         /**
-         * for login using post request,
+         * for login using post request and sending token in headers and Status code as OK
          * @input : It accepts id, name and password as body and generates jwt token based on name
          * @Return :  success on successful login or else returns unauthorized
          */
@@ -45,7 +45,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               val id = service.returnId(loginRequest.name)
               val token: String = TokenAuthorization.generateToken(loginRequest.name, id)
               respondWithHeaders(RawHeader("token",token)) {
-                complete(StatusCodes.OK)
+                complete(StatusCodes.OK,JsonResponse("Login successful."))
               }
             }
             else if (service.userLogin(loginRequest) == "User Not verified") {
@@ -58,9 +58,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
           }
         } ~
         /**
-         * to verify user using post request,
-         * @input : It accepts parameters token and name from the link
          * It fetches user by decoding the token and updates the isVerified field to true
+         * @input : It accepts parameters token and name from the link
          * @return :  success on successful verification of user and error if verification failed
          */
         path("verify") {
@@ -68,23 +67,25 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             parameters('token.as[String], 'name.as[String]) {
               (token, name) =>
                 val jwsObject = JWSObject.parse(token)
-                val updateUserAsVerified = MongoDatabase.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
-                Await.result(updateUserAsVerified, 60.seconds)
                 if (jwsObject.getPayload.toJSONObject.get("name").equals(name)) {
-                  logger.info("Successfully verified user!")
-                  complete(StatusCodes.OK, JsonResponse("User successfully verified and registered!"))
+                  val updateUserAsVerified = MongoDatabase.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
+                  //complete(StatusCodes.OK, JsonResponse("User successfully verified and registered!"))
+                  onComplete(updateUserAsVerified) {
+                    case Success(_) =>
+                      logger.info("Successfully verified user!")
+                      complete(StatusCodes.OK, JsonResponse("User successfully verified and registered!"))
+                  }
                 }
                 else {
-                  logger.error("user not verified.")
+                  logger.error("User not verified.")
                   complete(StatusCodes.BadRequest -> JsonResponse("User could not be verified! Please verify using the mail sent."))
                 }
             }
           }
         } ~
         /**
-         * to get all messages using get request,
-         * @input : It accepts group name as parameter
          * It fetches all the messages inside group chat name mentioned in as query parameter
+         * @input : It accepts group name as parameter
          * @return : All the messages on success and error if group chat name not found
          */
         path("messages") {
@@ -94,9 +95,14 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               val receiverId = service.returnId(messageRequest.receiver)
               val roomname = service.generateGroupChatName(messageRequest.sender, messageRequest.receiver, senderId.toString, receiverId)
               val messagesByGroupName = MongoDatabase.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
-              val messages = Await.result(messagesByGroupName, 60.seconds)
-              logger.info("Messages:" + messages)
-              complete(messages)
+              onComplete(messagesByGroupName) {
+                case Success(groupMessages) =>
+                  logger.info("Successfully fetched roomname")
+                  complete(groupMessages)
+                case Failure(error) =>
+                  logger.error("Error while fetching roomname")
+                  complete(error)
+              }
             }
             catch {
               case _: TimeoutException =>
@@ -106,9 +112,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
           }
         } ~
           /**
-           * to register user using post request,
-           * @input : It accepts id,name,password
            * It generates jwt token on successful registration of user and sends email to user for verification
+           * @input : It accepts id,name,password
            * @return : success on successful registration of user or else error message if user already exists
            */
           path("register") {
@@ -154,9 +159,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             }
           } ~
           /**
-           * For getting token and decoding username of sender from token
-           * @input: It accepts token as authorization parameter, and sender, receiver and message to save
            * It checks if receiver is a registered user if not throws message to register, if yes Saved message to Database
+           * @input: It accepts token as authorization parameter, and sender, receiver and message to save
            * @return:  success message if message delivered or error message if not delivered.
            */
           path("authorize") {
@@ -172,13 +176,15 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
                   implicit val timeout = Timeout(10.seconds)
                   val futureResponse = saveMessageActor ? saveToChat
-                  val result = Await.result(futureResponse, 60.seconds)
-                  if (result.equals("Message added")) {
-                    complete(StatusCodes.OK, JsonResponse("Message sent to receiver!"))
-                  }
-                  else {
-                    logger.error("Message could not be delivered")
-                    complete(StatusCodes.BadRequest -> JsonResponse("Message could not be delivered! Try sending all the data correctly again."))
+                  onComplete(futureResponse) {
+                    case Success(result) =>
+                      if (result.equals("Message added")) {
+                        complete(StatusCodes.OK, JsonResponse("Message sent to receiver!"))
+                      }
+                      else {
+                        logger.error("Message could not be delivered")
+                        complete(StatusCodes.BadRequest -> JsonResponse("Message could not be delivered! Try sending all the data correctly again."))
+                      }
                   }
                 }
                 else {
@@ -189,9 +195,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             }
           } ~
           /**
-           * For getting token and decoding username of sender from token
-           * @input: It accepts token as authorization parameter, receiver (groupname) and message to save
            * It saves messages from sender to a particular group mentioned by user
+           * @input: It accepts token as authorization parameter, receiver (groupname) and message to save
            * @return:  success message if message delivered or error message if not delivered.
            */
           path("groupChat") {
@@ -221,9 +226,10 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               try {
                 val groupname = messageRequest.groupName
                 val messagesByGroupName = MongoDatabase.collectionForGroup.find(equal("receiver", groupname)).toFuture()
-                val groupmessages = Await.result(messagesByGroupName, 60.seconds)
-                logger.info("Group Messages:" + groupmessages)
-                complete(groupmessages)
+                onComplete(messagesByGroupName) {
+                  case Success(groupMessages) => complete(groupMessages)
+                  case Failure(error) => complete(error)
+                }
               }
               catch {
                 case _: TimeoutException =>
