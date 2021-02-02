@@ -24,10 +24,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor, SaveToDatabaseActor}
 import com.bridgelabz.caseclasses._
-import com.bridgelabz.database.MongoDatabase
+import com.bridgelabz.database.{DatabaseService, MongoDatabase}
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{MyJsonProtocol, MyJsonResponse}
-import com.bridgelabz.services.{DatabaseService, UserManagementService}
+import com.bridgelabz.services.UserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
