@@ -20,6 +20,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
+import com.bridgelabz.database.DatabaseService
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
 import javax.mail.internet.InternetAddress
