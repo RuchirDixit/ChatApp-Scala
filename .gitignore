@@ -2,5 +2,5 @@
 *.log
 .idea/
 target/
-project/target
+project/target/
 scalastyle-config.xml
