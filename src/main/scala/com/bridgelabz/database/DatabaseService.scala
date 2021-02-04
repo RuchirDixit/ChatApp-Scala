@@ -23,12 +23,12 @@ import org.bson.BsonType
 import org.mongodb.scala.Document
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Projections.excludeId
-
+import concurrent.duration._
 import scala.concurrent.{Await, Future, TimeoutException}
 
 object DatabaseService extends LazyLogging with DatabaseServiceTrait {
   /**
-   *
+   * Checks whether user already exists and if email is valid then add user to database
    * @param credentials : Data about the user that is getting stored in database
    * @return : If data is entered successfully then returns SUCCESS or else return FAILURE
    */
@@ -42,8 +42,10 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
         length = users.length
       }
       catch {
-        case _: TimeoutException =>
-          logger.info("Timeout!")
+        case timeoutException: TimeoutException =>
+          logger.info(timeoutException.toString)
+        case exception: Exception =>
+          logger.info(exception.toString)
       }
       val userToBeAdded : Document = Document("id" -> Some(length + 1),"name" -> credentials.name, "password" -> credentials.password, "isVerified" -> false)
       val ifUserExists = checkIfExists(credentials.name)
@@ -60,8 +62,11 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
           "Success"
         }
         catch {
-          case _:TimeoutException =>
-            logger.error("Timeout while added data to users")
+          case timeoutException:TimeoutException =>
+            logger.error(timeoutException.toString)
+            "Failure"
+          case exception: Exception =>
+            logger.info(exception.toString)
             "Failure"
         }
       }
@@ -73,7 +78,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
   }
 
   /**
-   *
+   * Checks if user already exists if yes returns true else return false
    * @param name : Name of user to check whether this user already exists
    * @return : If user already exists it returns true or else it returns false
    */
@@ -90,14 +95,17 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       false
     }
     catch {
-      case exception: TimeoutException =>
-        logger.error(exception.toString)
+      case timeoutException: TimeoutException =>
+        logger.error(timeoutException.toString)
+        false
+      case exception: Exception =>
+        logger.info(exception.toString)
         false
     }
   }
 
   /**
-   *
+   * Saves chat messages to Chat collections
    * @param sendMessageRequest: The data about sender, receiver and the message that is to be send; added to chat-log collection
    * @return : String "Message sent" to inform that message is saved to database
    */
@@ -113,8 +121,9 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
     MongoDatabase.collectionForUserRegistration.find().toFuture()
   }
 
+
   /**
-   *
+   * Get user object based on name passed as parameter
    * @param name : Find user based on name specified
    * @return : Future of users that are returned using find method from database
    */
@@ -123,7 +132,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
   }
 
   /**
-   *
+   * To save messages to group chat
    * @param groupChatInfo : Information about sender, receiver and message from group chat
    * @return : String message that message has been sent inside group
    */
@@ -135,9 +144,12 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       "Message sent to group"
     }
     catch {
-      case _:TimeoutException =>
-        logger.error("Timeout while adding data to group")
+      case timeoutException:TimeoutException =>
+        logger.error(timeoutException.toString)
         "Timeout"
+      case exception: Exception =>
+        logger.info(exception.toString)
+        "Error"
     }
   }
 }
