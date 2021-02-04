@@ -157,7 +157,7 @@ class UserManagementService extends LazyLogging {
   }
 
   /**
-   *
+   * Save messages to group chat and return if message added or failed
    * @param groupChatInfo : Information about sender, receiver and message in group chat
    * @return : String message if message is added to group or not
    */
