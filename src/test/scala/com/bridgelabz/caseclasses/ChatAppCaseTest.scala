@@ -33,5 +33,17 @@ class ChatAppCaseTest extends AnyWordSpec with should.Matchers with ScalatestRou
       val status = GroupMessages("Future of India")
       assert(status == GroupMessages("Future of India"))
     }
+    "return JsonResponse created true" in {
+      val status = JsonResponse("Response")
+      assert(status == JsonResponse("Response"))
+    }
+    "return Messages created true" in {
+      val status = Messages("ruchircool007@gmail.com","ruchirtd96@gmail.com")
+      assert(status == Messages("ruchircool007@gmail.com","ruchirtd96@gmail.com"))
+    }
+    "return User created true" in {
+      val status = User(Some(1),"ruchirtd96@gmail.com","demo",Some(true))
+      assert(status == User(Some(1),"ruchirtd96@gmail.com","demo",Some(true)))
+    }
   }
 }
