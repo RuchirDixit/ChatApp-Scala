@@ -20,12 +20,14 @@ import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
 import com.bridgelabz.database.DatabaseService
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
-
-class ChatAppServiceTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest  {
+import org.scalatestplus.mockito.MockitoSugar
+import org.mockito.Mockito.when
+import org.mockito.Mockito.doNothing
+class ChatAppServiceTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest with MockitoSugar{
   // Test case To check if user exists
   "Check if exists" should {
     "return true" in {
-      val status = DatabaseService.checkIfExists("ruchirtd96@gmail.com")
+      val status = DatabaseService.checkIfExists("ruchir99@gmail.com")
       assert(status == true)
     }
     "return false" in {
@@ -75,7 +77,7 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
   "On Passing credentials" should {
     val service = new UserManagementService
     "return Logged  in " in {
-      val data = User(Some(1),"ruchirtd96@gmail.com","demoemail",Some(true))
+      val data = User(Some(1),"ruchir99@gmail.com","demoemail",Some(true))
       val status = service.userLogin(data)
       assert(status == "Login Successful")
     }
@@ -84,20 +86,36 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
       val status = service.userLogin(data)
       assert(status == "User not found")
     }
+    "return User not verified" in {
+      val mockLogin = mock[UserManagementService]
+      val data = User(Some(1),"ruchir@rediffmail.com","demo",Some(false))
+      when(mockLogin.userLogin(data)).thenReturn("User Not verified")
+      val status = mockLogin.userLogin(data)
+      assert(status == "User Not verified")
+    }
   }
 
   // Test case to check if user is created or not
   "On Passing credentials" should {
     val service = new UserManagementService
     "return User created " in {
-      val data = User(Some(1),"ruchir32@gmail.com","demoemail",Some(true))
-      val status = service.createUser(data)
+      val serviceMock = mock[UserManagementService]
+      val data = User(Some(1),"ruchir01@gmail.com","demoemail",Some(true))
+      when(serviceMock.createUser(data)).thenReturn("User created")
+      val status = serviceMock.createUser(data)
       assert(status == "User created")
     }
     "return User not created" in {
-      val data = User(Some(1),"ruchir96@gmail.com","demoemail",Some(false))
+      val data = User(Some(1),"ruchir99@gmail.com","demoemail",Some(false))
       val status = service.createUser(data)
       assert(status == "User not created")
+    }
+    "return User validation failed " in {
+      val serviceMock = mock[UserManagementService]
+      val data = User(Some(1),"@gmail.com","demoemail",Some(true))
+      when(serviceMock.createUser(data)).thenReturn("User Validation Failed")
+      val status = serviceMock.createUser(data)
+      assert(status == "User Validation Failed")
     }
   }
 
@@ -109,14 +127,30 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
       val status = service.sendMessage(data)
       assert(status == "Message added")
     }
+    "return sending message failed" in {
+      val serviceMock = mock[UserManagementService]
+      val data = ChatCase(Some("xyz@gmail.com"),"non-existing@xyz.com","mock",Some("mockgroup"))
+      when(serviceMock.sendMessage(data)).thenReturn("Sending Msg failed")
+      val status = serviceMock.sendMessage(data)
+      assert(status == "Sending Msg failed")
+    }
   }
 
   // Test case to get ID for a particular name
   "On Passing name of user" should {
     val service = new UserManagementService
     "return Id" in {
-      val status = service.returnId("ruchirtd96@gmail.com")
-      assert(status == 1)
+      val status = service.returnId("ruchir99@gmail.com")
+      assert(status == 2)
+    }
+  }
+
+  "On passing incorrect name of user" should {
+    "return Id -1" in {
+      val idMock = mock[UserManagementService]
+      when(idMock.returnId("anyuser@gmail.com")).thenReturn(-1)
+      val status = idMock.returnId("anyuser@gmail.com")
+      assert(status == -1)
     }
   }
 
@@ -137,5 +171,13 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
       val status = service.saveGroupChat(groupChat)
       assert(status == "Message added")
     }
+    "return Message Failed to send message" in {
+      val messageMock = mock[UserManagementService]
+      val groupChat = GroupChat(Some("ruchirtd96@gmail.com"),"xyz@gmail.com","Group created")
+      when(messageMock.saveGroupChat(groupChat)).thenReturn("Failed to send message")
+      val status = messageMock.saveGroupChat(groupChat)
+      assert(status == "Failed to send message")
+    }
   }
+
 }
