@@ -24,6 +24,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
+import com.bridgelabz.database.DatabaseService.logger
 import com.bridgelabz.database.{DatabaseService, MongoDatabase, SaveToDatabaseActor}
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{MyJsonProtocol, MyJsonResponse}
@@ -82,7 +83,6 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 val jwsObject = JWSObject.parse(token)
                 if (jwsObject.getPayload.toJSONObject.get("name").equals(name)) {
                   val updateUserAsVerified = MongoDatabase.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
-                  //complete(StatusCodes.OK, JsonResponse("User successfully verified and registered!"))
                   onComplete(updateUserAsVerified) {
                     case Success(_) =>
                       logger.info("Successfully verified user!")
@@ -121,6 +121,9 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               case _: TimeoutException =>
                 logger.error("Timeout exception for getting messages on roomname")
                 complete(JsonResponse("Reading file timeout."))
+              case exception: Exception =>
+                logger.error(exception.toString)
+                complete(JsonResponse(exception.toString))
             }
           }
         } ~
@@ -249,6 +252,9 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 case _: TimeoutException =>
                   logger.error("Timeout exception while reading data")
                   complete(JsonResponse("Reading file timeout."))
+                case exception: Exception =>
+                  logger.error(exception.toString)
+                  complete(JsonResponse(exception.toString))
               }
             }
           } ~
