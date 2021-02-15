@@ -17,16 +17,23 @@ package com.bridgelabz.database
 
 import java.util.regex.Pattern
 
+import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
+import com.bridgelabz.utilities.Utilities
 import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.sslconfig.ssl.ClientAuth.None
 import org.bson.BsonType
 import org.mongodb.scala.Document
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Projections.excludeId
+
 import concurrent.duration._
-import scala.concurrent.{Await, Future, TimeoutException}
+import scala.None
+import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException}
 
 object DatabaseService extends LazyLogging with DatabaseServiceTrait {
+  implicit val system = ActorSystemFactory.system
+  implicit val executor: ExecutionContext = system.dispatcher
   /**
    * Checks whether user already exists and if email is valid then add user to database
    * @param credentials : Data about the user that is getting stored in database
@@ -38,8 +45,9 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       logger.info("Email valid!")
       var length = 0
       try {
-        val users = Await.result(getUsers(),120.seconds)
-        length = users.length
+        val secondsForAwait = 120
+        val users = Utilities.tryAwait(getUsers(),secondsForAwait)
+        length = users.size
       }
       catch {
         case timeoutException: TimeoutException =>
@@ -58,7 +66,8 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       {
         val future = MongoDatabase.collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
         try{
-          Await.result(future,10.seconds)
+          val duration = 10
+          Utilities.tryAwait(future,duration)
           "Success"
         }
         catch {
@@ -93,6 +102,10 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
         }
       ))
       false
+//      getUsers().flatMap {
+//        case Some(users) =>
+//        case None => Future.successful(false)
+//      }
     }
     catch {
       case timeoutException: TimeoutException =>
@@ -110,10 +123,21 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    * @return : String "Message sent" to inform that message is saved to database
    */
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
-    val chatMessage = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
-    val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(chatMessage).toFuture()
-    Await.result(chatAddedFuture,60.seconds)
-    "Message sent"
+    try
+      {
+      val chatMessage = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
+      val chatAddedFuture = MongoDatabase.collectionForChat.insertOne(chatMessage).toFuture()
+      Await.result(chatAddedFuture,60.seconds)
+      "Message sent"
+    }
+    catch {
+      case timeoutException:TimeoutException =>
+        logger.error(timeoutException.toString)
+        "Timeout"
+      case exception: Exception =>
+        logger.info(exception.toString)
+        "Error"
+    }
   }
 
   // Returns All the users present inside database in the form of future
