@@ -5,7 +5,9 @@ version := "0.1"
 
 scalaVersion := "2.12.2"
 
-//coverageExcludedPackages := "*Test.scala"
+coverageExcludedPackages := "com\\.bridgelabz\\.main\\.*"
+
+coverageExcludedPackages := "com\\.bridgelabz\\.utilities\\.*"
 
 coverageEnabled := true
 
