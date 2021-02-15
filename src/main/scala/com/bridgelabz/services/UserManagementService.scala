@@ -15,7 +15,6 @@
 // limitations under the License.
 package com.bridgelabz.services
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
 import com.bridgelabz.actors.ActorSystemFactory
@@ -25,7 +24,6 @@ import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
 import javax.mail.internet.InternetAddress
 import org.bson.BsonType
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.util.{Failure, Success}
@@ -141,7 +139,7 @@ class UserManagementService extends LazyLogging {
    *  Uses courier library to send email to registered user
    *  @return : Success if email send successfully or NOT Found if not able to send mail
    */
-  def sendEmailReminder(receiverAddress:String) : Unit = {
+  def sendEmailReminder(receiverAddress:String) : String = {
     val mailer = Mailer(sys.env("mailer"), sys.env("smtp_port").toInt)
       .auth(true)
       .as(sys.env("sender_email"),sys.env("sender_password"))
@@ -154,6 +152,7 @@ class UserManagementService extends LazyLogging {
         case Success(_) => logger.info("Email notification Sent!")
         case Failure(_) => complete(StatusCodes.NotFound,"Failed To Deliver Notification!")
       }
+    "Mail send"
   }
 
   /**
