@@ -15,46 +15,30 @@
 // limitations under the License.
 package com.bridgelabz.routes
 
-import akka.http.scaladsl.model.{HttpEntity, MediaTypes, StatusCodes}
+import akka.http.scaladsl.model.headers.OAuth2BearerToken
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaTypes, StatusCodes}
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.ByteString
+import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.services.UserManagementService
-import com.typesafe.sslconfig.ssl.FakeChainedKeyStore.User
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
-import org.mockito.Mockito.when
 
 class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest with MockitoSugar  {
   "A Router" should {
     "register successfully" in {
-      val regMock = mock[UserManagementService]
       val jsonRequest = ByteString(
         s"""
            |{
-           |    "name":"ruchirtd302@gmail.com",
+           |    "name":"ruchirtd903@gmail.com",
            |    "password":"demo"
            |}
               """.stripMargin)
       Post("/user/register", HttpEntity(MediaTypes.`application/json`, jsonRequest)) ~>
         new UserManagementRoutes(new UserManagementService).routes ~> check {
         assert(status == StatusCodes.OK)
-      }
-    }
-  }
-  "A router" should {
-    "register user exists" in {
-      val jsonRequest = ByteString(
-        s"""
-           |{
-           |    "name":"ruchirtd96@gmail.com",
-           |    "password":"demo"
-           |}
-              """.stripMargin)
-      Post("/user/register", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
-        new UserManagementRoutes(new UserManagementService).routes ~> check
-      {
-        assert(status == StatusCodes.Unauthorized)
       }
     }
   }
@@ -174,7 +158,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
     }
   }
   "A router" should {
-    "return internal server error for authorize" in {
+    "return OK for authorize" in {
       val jsonRequest = ByteString(
         s"""
            |{
@@ -182,10 +166,85 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
            |   "message":"Hey ruchir"
            |}
               """.stripMargin)
-      Post("/user/authorize", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
-        new UserManagementRoutes(new UserManagementService).routes ~> check
-      {
-        assert(status == StatusCodes.InternalServerError)
+      val service = new UserManagementService
+      val id = service.returnId("xyz@gmail.com")
+      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.OK
+      }
+    }
+  }
+  "A router" should {
+    "return bad request for authorize" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":null,
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      val service = new UserManagementService
+      val id = service.returnId(null)
+      val token = TokenAuthorization.generateToken(null,id)
+      Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+  }
+
+  "A router" should {
+    "return 401 Unauthorized for authorize" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":"hey@rediffmail.com",
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      val service = new UserManagementService
+      val id = service.returnId("hey@rediffmail.com")
+      val token = TokenAuthorization.generateToken("hey@rediffmail.com",id)
+      Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.Unauthorized
+      }
+    }
+  }
+
+  "A router" should {
+    "return OK for GroupChat" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":"xyz@gmail.com",
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      val service = new UserManagementService
+      val id = service.returnId("xyz@gmail.com")
+      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      Post("/user/groupChat").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.OK
+      }
+    }
+  }
+  "A router" should {
+    "return OK for ViewGroups" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |
+           |}
+              """.stripMargin)
+      val service = new UserManagementService
+      val id = service.returnId("xyz@gmail.com")
+      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      Post("/user/viewGroups").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.OK
       }
     }
   }
@@ -201,6 +260,130 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
         new UserManagementRoutes(new UserManagementService).routes ~> check
       {
         assert(status == StatusCodes.OK)
+      }
+    }
+  }
+  "A router" should {
+    "return check if valid" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |    "sender":"ruchir99@gmail.com",
+           |    "receiver":"@gmail.com"
+           |}
+              """.stripMargin)
+      Post("/user/messages", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
+        new UserManagementRoutes(new UserManagementService).routes ~> check
+      {
+        assert(status == StatusCodes.OK)
+      }
+    }
+  }
+  "A router" should {
+    "return check if receiver group exists" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |    "sender":"ruchir99@gmail.com",
+           |    "receiver":"",
+           |    "message":"messages in test"
+           |}
+              """.stripMargin)
+      Post("/user/groupChat", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
+        new UserManagementRoutes(new UserManagementService).routes ~> check
+      {
+        assertThrows _
+      }
+    }
+  }
+  "A router" should {
+    "return unauthorized viewGroups" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":"xyz@gmail.com",
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      Post("/user/viewGroups").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken("anyrandomtoken")) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.Unauthorized
+      }
+    }
+  }
+  "A router" should {
+    "return Unauthorized group chat" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":"xyz@gmail.com",
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      Post("/user/groupChat").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken("randomtoken")) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.Unauthorized
+      }
+    }
+  }
+
+  "A router" should {
+    "return GroupMessages OK" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "groupName":"daundboys"
+           |}
+              """.stripMargin)
+      Post("/user/groupMessages", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
+        new UserManagementRoutes(new UserManagementService).routes ~> check
+      {
+        assert(status == StatusCodes.OK)
+      }
+    }
+  }
+  "A router" should {
+    "return bad request authorize" in {
+      val jsonRequest = ByteString(
+        s"""
+           |{
+           |  "receiver":null,
+           |   "message":"Hey ruchir"
+           |}
+              """.stripMargin)
+      val service = new UserManagementService
+      val id = service.returnId(null)
+      val token = TokenAuthorization.generateToken(null,id)
+      Post("/user/groupChat").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
+        addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        status shouldBe StatusCodes.BadRequest
+      }
+    }
+  }
+  "A router" should {
+    "return get some" in {
+      Get("/user/verify") ~> new UserManagementRoutes(new UserManagementService).routes ~> check {
+        handled shouldBe false
+      }
+    }
+  }
+
+  "A router" should {
+    "return true for get request" in {
+      Get("/user/verify?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6LTIxNDc0ODM2NDgsIm5hbWUiOiJydWNoaXJ0ZDk2QGdtYWlsLmNvbSJ9." +
+        "iZaPfKKAcmiREDuUytdaPnVeh30VoTtTpneiX6HQiPY&name=hello@gmail.com")~> new UserManagementRoutes(new UserManagementService).routes ~> check {
+        handled shouldBe true
+      }
+    }
+  }
+
+  "A router" should {
+    "return get some ver" in {
+      val service = new UserManagementService
+      val id = service.returnId("ruchir99@gmail.com")
+      val token = TokenAuthorization.generateToken("ruchir99@gmail.com",id)
+      Get("/user/verify?token=" + token + "&name=ruchir99@gmail.com")~> new UserManagementRoutes(new UserManagementService).routes ~> check {
+        handled shouldBe true
       }
     }
   }
