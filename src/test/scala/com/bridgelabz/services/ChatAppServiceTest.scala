@@ -22,7 +22,7 @@ import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.when
-import org.mockito.Mockito.doNothing
+
 class ChatAppServiceTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest with MockitoSugar{
   // Test case To check if user exists
   "Check if exists" should {
@@ -70,6 +70,14 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
       val data = GroupChat(Some("ruchircool007@gmail.com"),"Test case group","Hey group")
       val status = DatabaseService.saveToGroupChat(data)
       assert(status == "Message sent to group")
+    }
+  }
+
+  "On Successful chat sent to group" should {
+    "return Message exception group chat" in {
+      val data = GroupChat(Some("ruchircool007@gmail.com"),null,"Hey group")
+      val status = DatabaseService.saveToGroupChat(data)
+      assert(status == "Error")
     }
   }
 
@@ -177,6 +185,39 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
       when(messageMock.saveGroupChat(groupChat)).thenReturn("Failed to send message")
       val status = messageMock.saveGroupChat(groupChat)
       assert(status == "Failed to send message")
+    }
+  }
+
+  "When send email reminder" must  {
+    "return mail send" in {
+      val service = new UserManagementService
+      val status = service.sendEmailReminder("xyz@gmail.com")
+      assert(status == "Mail send")
+    }
+  }
+
+  "On Sending null value to group" should {
+    "return Failed to save group message" in {
+      val service = new UserManagementService
+      val data = GroupChat(Some("ruchircool007@gmail.com"),null,"Hey group")
+      val status = service.saveGroupChat(data)
+      assert(status == "Failed to send message")
+    }
+  }
+
+  "On Sending null to chat" should {
+    "return Failed" in {
+      val service = new UserManagementService
+      val data = ChatCase(Some("xyz@gmail.com"),null,"mock",Some("mockgroup"))
+      val status = service.sendMessage(data)
+      assert(status == "Sending Msg failed")
+    }
+  }
+
+  "On Sending null while saving user" should {
+    "return false for null user" in {
+      val status = DatabaseService.checkIfExists(null)
+      assert(status == false)
     }
   }
 
