@@ -15,15 +15,18 @@
 // limitations under the License.
 package com.bridgelabz.database
 
+import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Projections.excludeId
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat}
 import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.bson.codecs.{DEFAULT_CODEC_REGISTRY, Macros}
-import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
+import org.mongodb.scala.{Completed, Document, MongoClient, MongoCollection, MongoDatabase}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object MongoDatabase {
+
   val chatCodecProvider = Macros.createCodecProvider[ChatCase]()
   val groupCodecProvider = Macros.createCodecProvider[GroupChat]()
   val codecRegistry = CodecRegistries.fromRegistries(
@@ -46,4 +49,27 @@ object MongoDatabase {
   collectionForChat.drop()
   val collectionForGroup: MongoCollection[GroupChat] = database.getCollection[GroupChat](groupCollection)
   collectionForGroup.drop()
+
+  def addUser(id: Some[Int], name: String, password: String, bool: Boolean) : Future[Completed] = {
+    val userToBeAdded : Document = Document("id" -> id,"name" -> name, "password" -> password, "isVerified" -> false)
+    MongoDatabase.collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
+  }
+
+  def saveChatMessage(sendMessageRequest: ChatCase) : Future[Completed] = {
+    val chatMessage = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
+    MongoDatabase.collectionForChat.insertOne(chatMessage).toFuture()
+  }
+
+  def saveGroupChat(groupChatInfo: GroupChat) : Future[Completed] = {
+    val groupChat = GroupChat(groupChatInfo.sender,groupChatInfo.receiver,groupChatInfo.message)
+    MongoDatabase.collectionForGroup.insertOne(groupChat).toFuture()
+  }
+
+  def find(): Future[Seq[Document]] = {
+    MongoDatabase.collectionForUserRegistration.find().toFuture()
+  }
+
+  def find(name: String): Future[Seq[Document]] = {
+    MongoDatabase.collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
+  }
 }
