@@ -24,7 +24,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn
-
+// $COVERAGE-OFF$
 object Main extends App with LazyLogging {
   private val _ = ConfigFactory.load()
   private val host = sys.env("Host")
