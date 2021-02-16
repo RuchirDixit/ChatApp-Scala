@@ -156,11 +156,13 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                     + token + "&name=" + createUserRequest.name)))
                   .onComplete {
                     case Success(_) =>
+                      // $COVERAGE-OFF$
                       val schedulerActor = system.actorOf(Props[EmailNotificationActor], "schedulerActor")
                       system.scheduler.schedule(30.seconds, 120.seconds, schedulerActor, createUserRequest.name)
                       logger.info("Message delivered. Email verified!")
                     case Failure(_) =>
                       logger.error("Failed to deliver mail.")
+                      // $COVERAGE-OFF$
                       complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
                   }
                 complete((StatusCodes.OK,JsonResponse("User Registered! Now you can Login using these details.")))
@@ -168,6 +170,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                 logger.error("Email address not correct according to pattern")
                 complete(StatusCodes.BadRequest -> JsonResponse("Error! Please enter correct email address."))
               }
+              // $COVERAGE-OFF$
               else {
                 logger.error("User already exists")
                 complete(StatusCodes.Unauthorized, JsonResponse("Error! User already exists!"))
@@ -198,6 +201,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                       if (result.equals("Message added")) {
                         complete(StatusCodes.OK, JsonResponse("Message sent to receiver!"))
                       }
+                      // $COVERAGE-OFF$
                       else {
                         logger.error("Message could not be delivered")
                         complete(StatusCodes.BadRequest -> JsonResponse("Message could not be delivered! Try sending all the data correctly again."))
