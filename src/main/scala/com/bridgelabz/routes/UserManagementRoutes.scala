@@ -27,7 +27,7 @@ import com.bridgelabz.caseclasses._
 import com.bridgelabz.database.DatabaseService.logger
 import com.bridgelabz.database.{DatabaseService, MongoDatabase, SaveToDatabaseActor}
 import com.bridgelabz.jwt.TokenAuthorization
-import com.bridgelabz.marshallers.{MyJsonProtocol, MyJsonResponse}
+import com.bridgelabz.marshallers.{MyJsonProtocol, JsonResponseProtocol}
 import com.bridgelabz.services.UserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
@@ -42,7 +42,7 @@ import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
 class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
-  with MyJsonProtocol with MyJsonResponse {
+  with MyJsonProtocol with JsonResponseProtocol {
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val routes: Route =
