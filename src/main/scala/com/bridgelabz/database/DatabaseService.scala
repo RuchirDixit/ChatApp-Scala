@@ -58,7 +58,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       }
       else
       {
-        val future = MongoDatabase.addUser(Some(length + 1),credentials.name,credentials.password,false)
+        val future = DatabaseConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
         try{
           val duration = 10
           Utilities.tryAwait(future,duration)
@@ -115,7 +115,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
     try
       {
-        val chatAddedFuture = MongoDatabase.saveChatMessage(sendMessageRequest)
+        val chatAddedFuture = DatabaseConfig.saveChatMessage(sendMessageRequest)
       Await.result(chatAddedFuture,60.seconds)
       "Message sent"
     }
@@ -131,7 +131,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
 
   // Returns All the users present inside database in the form of future
   def getUsers() : Future[Seq[Document]] = {
-    MongoDatabase.find()
+    DatabaseConfig.find()
   }
 
 
@@ -141,7 +141,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    * @return : Future of users that are returned using find method from database
    */
   def getUsersUsingFilter(name : String) : Future[Seq[Document]] = {
-    MongoDatabase.find(name)
+    DatabaseConfig.find(name)
   }
 
   /**
@@ -151,7 +151,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    */
   def saveToGroupChat(groupChatInfo: GroupChat) : String = {
     try{
-      val chatAddedFuture = MongoDatabase.saveGroupChat(groupChatInfo)
+      val chatAddedFuture = DatabaseConfig.saveGroupChat(groupChatInfo)
       Await.result(chatAddedFuture,60.seconds)
       "Message sent to group"
     }
