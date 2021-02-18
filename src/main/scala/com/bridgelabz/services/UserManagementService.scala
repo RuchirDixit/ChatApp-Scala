@@ -140,11 +140,11 @@ class UserManagementService extends LazyLogging {
    *  @return : Success if email send successfully or NOT Found if not able to send mail
    */
   def sendEmailReminder(receiverAddress:String) : String = {
-    val mailer = Mailer(sys.env("mailer"), sys.env("smtp_port").toInt)
+    val mailer = Mailer(sys.env("GMAILMAILER"), sys.env("SMTPPORT").toInt)
       .auth(true)
-      .as(sys.env("sender_email"),sys.env("sender_password"))
+      .as(sys.env("SENDEREMAIL"),sys.env("PASSWORD"))
       .startTls(true)()
-    mailer(Envelope.from(new InternetAddress(sys.env("sender_email")))
+    mailer(Envelope.from(new InternetAddress(sys.env("SENDEREMAIL")))
       .to(new InternetAddress(receiverAddress))
       .subject("Full version Reminder")
       .content(Text("Purchase full version for more exciting features for chatting. Pay $20 for full version. Buy Now!")))
