@@ -27,8 +27,8 @@ import scala.io.StdIn
 // $COVERAGE-OFF$
 object Main extends App with LazyLogging {
   private val _ = ConfigFactory.load()
-  private val host = sys.env("Host")
-  private val port_number = sys.env("Port_number").toInt
+  private val host = sys.env("HOST")
+  private val port_number = sys.env("PORT").toInt
   implicit val system = ActorSystemFactory.system
   implicit val mat = ActorMaterializer()
   implicit val executor: ExecutionContext = system.dispatcher
