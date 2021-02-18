@@ -36,7 +36,6 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import javax.mail.internet.InternetAddress
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Updates.set
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
@@ -114,15 +113,18 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   complete(groupMessages)
                 case Failure(error) =>
                   logger.error("Error while fetching roomname")
+                  // $COVERAGE-OFF$
                   complete(error)
               }
             }
             catch {
               case _: TimeoutException =>
                 logger.error("Timeout exception for getting messages on roomname")
+                // $COVERAGE-OFF$
                 complete(JsonResponse("Reading file timeout."))
               case exception: Exception =>
                 logger.error(exception.toString)
+                // $COVERAGE-OFF$
                 complete(JsonResponse(exception.toString))
             }
           }
@@ -144,15 +146,15 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                   case _ => Int.MinValue
                 })
                 val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
-                val mailer = Mailer(sys.env("mailer"), sys.env("smtp_port").toInt)
+                val mailer = Mailer(sys.env("GMAILMAILER"), sys.env("SMTPPORT").toInt)
                   .auth(true)
-                  .as(sys.env("sender_email"), sys.env("sender_password"))
+                  .as(sys.env("SENDEREMAIL"), sys.env("PASSWORD"))
                   .startTls(true)()
-                mailer(Envelope.from(new InternetAddress(sys.env("sender_email")))
+                mailer(Envelope.from(new InternetAddress(sys.env("SENDEREMAIL")))
                   .to(new InternetAddress(createUserRequest.name))
                   .subject("Token")
                   .content(Text("Thanks for registering! Click on this link to verify your email address: http://"
-                    + sys.env("Host") + ":" + sys.env("Port_number") + "/user/verify?token="
+                    + sys.env("HOST") + ":" + sys.env("PORT") + "/user/verify?token="
                     + token + "&name=" + createUserRequest.name)))
                   .onComplete {
                     case Success(_) =>
