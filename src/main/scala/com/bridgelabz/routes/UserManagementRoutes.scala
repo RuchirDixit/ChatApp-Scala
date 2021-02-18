@@ -24,10 +24,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
-import com.bridgelabz.database.DatabaseService.logger
-import com.bridgelabz.database.{DatabaseService, DatabaseConfig, SaveToDatabaseActor}
+import com.bridgelabz.database.{DatabaseConfig, DatabaseService, SaveToDatabaseActor}
 import com.bridgelabz.jwt.TokenAuthorization
-import com.bridgelabz.marshallers.{JsonProtocol, JsonResponseProtocol}
+import com.bridgelabz.marshallers.{ChatCaseJsonProtocol, GroupChatJsonProtocol, JsonResponseProtocol}
 import com.bridgelabz.services.UserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
@@ -36,12 +35,13 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import javax.mail.internet.InternetAddress
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Updates.set
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
 class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
-  with JsonProtocol with JsonResponseProtocol {
+  with ChatCaseJsonProtocol with JsonResponseProtocol with GroupChatJsonProtocol {
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val routes: Route =
