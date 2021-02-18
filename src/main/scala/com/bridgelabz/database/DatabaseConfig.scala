@@ -35,13 +35,16 @@ object DatabaseConfig {
   )
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
-  val mongoClient: MongoClient = MongoClient()
-  val databaseName = sys.env("database_name")
+  val host = sys.env("HOST")
+  val port = sys.env("MONGOPORT")
+  val url = s"mongodb://${host}:${port}"
+  val mongoClient: MongoClient = MongoClient(url)
+  val databaseName = sys.env("DATABASENAME")
   // Getting mongodb database
   val database: MongoDatabase = mongoClient.getDatabase(databaseName).withCodecRegistry(codecRegistry)
-  val registrationCollection = sys.env("register_collection_name")
-  val chatCollection = sys.env("chat_collection")
-  val groupCollection = sys.env("group-collection")
+  val registrationCollection = "users"
+  val chatCollection = "chatlogs"
+  val groupCollection = "groupchats"
   // Getting mongodb collection
   val collectionForUserRegistration: MongoCollection[Document] = database.getCollection(registrationCollection)
   collectionForUserRegistration.drop()
@@ -50,8 +53,8 @@ object DatabaseConfig {
   val collectionForGroup: MongoCollection[GroupChat] = database.getCollection[GroupChat](groupCollection)
   collectionForGroup.drop()
 
-  def addUser(id: Some[Int], name: String, password: String, bool: Boolean) : Future[Completed] = {
-    val userToBeAdded : Document = Document("id" -> id,"name" -> name, "password" -> password, "isVerified" -> bool)
+  def addUser(id: Some[Int], name: String, password: String, boolean: Boolean) : Future[Completed] = {
+    val userToBeAdded : Document = Document("id" -> id,"name" -> name, "password" -> password, "isVerified" -> boolean)
     DatabaseConfig.collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
   }
 
