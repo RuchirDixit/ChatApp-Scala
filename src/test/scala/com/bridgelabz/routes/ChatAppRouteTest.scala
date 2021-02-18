@@ -32,7 +32,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
       val jsonRequest = ByteString(
         s"""
            |{
-           |    "name":"ruchirtd908@gmail.com",
+           |    "name":"ruchirtd111@gmail.com",
            |    "password":"demo"
            |}
               """.stripMargin)
