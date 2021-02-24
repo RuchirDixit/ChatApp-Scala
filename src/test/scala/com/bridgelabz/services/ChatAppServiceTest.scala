@@ -23,16 +23,26 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.mockito.Mockito.when
 
+import scala.concurrent.Future
+
 class ChatAppServiceTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest with MockitoSugar{
   // Test case To check if user exists
   "Check if exists" should {
     "return true" in {
       val status = DatabaseService.checkIfExists("ruchir99@gmail.com")
-      assert(status == true)
+      status.map(status => {
+        if(status == true){
+          assert(status == true)
+        }
+      })
     }
     "return false" in {
       val status = DatabaseService.checkIfExists("abc@gmail.com")
-      assert(status == false)
+      status.map(status => {
+        if(status == false){
+          assert(status == false)
+        }
+      })
     }
   }
 
@@ -45,13 +55,21 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
         assert(status == "Failure")
       }
       else {
-        assert(status == "Success")
+        status.map(status => {
+          if(status == "Success"){
+            assert(status == "Success")
+          }
+        })
       }
     }
     "return Validation Failed" in {
       val data = User(Some(1),"@gmail.com","1234",Some(false))
       val status = DatabaseService.saveUser(data)
-      assert(status == "Validation Failed")
+      status.map(status => {
+        if(status == "Validation Failed"){
+          assert(status == "Validation Failed")
+        }
+      })
     }
   }
 
@@ -87,19 +105,27 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
     "return Logged  in " in {
       val data = User(Some(1),"ruchir99@gmail.com","demoemail",Some(true))
       val status = service.userLogin(data)
-      assert(status == "Login Successful")
+      status.map( status => {
+        if(status == "Login Successfull"){
+          assert(status == "Login Successful")
+        }
+      })
     }
     "return User not found" in {
       val data = User(Some(1),"ruchir@rediffmail.com","demo",Some(false))
       val status = service.userLogin(data)
-      assert(status == "User not found")
+      status.map( status => {
+        if(status == "User not found"){
+          assert(status == "User not found")
+        }
+      })
     }
     "return User not verified" in {
       val mockLogin = mock[UserManagementService]
       val data = User(Some(1),"ruchir@rediffmail.com","demo",Some(false))
-      when(mockLogin.userLogin(data)).thenReturn("User Not verified")
+      when(mockLogin.userLogin(data)).thenReturn(Future("User Not verified"))
       val status = mockLogin.userLogin(data)
-      assert(status == "User Not verified")
+      assert(status === Future("User Not verified"))
     }
   }
 
@@ -109,9 +135,9 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
     "return User created " in {
       val serviceMock = mock[UserManagementService]
       val data = User(Some(1),"ruchir01@gmail.com","demoemail",Some(true))
-      when(serviceMock.createUser(data)).thenReturn("User created")
+      when(serviceMock.createUser(data)).thenReturn(Future("User created"))
       val status = serviceMock.createUser(data)
-      assert(status == "User created")
+      assert(status == Future("User created"))
     }
     "return User not created" in {
       val data = User(Some(1),"ruchir99@gmail.com","demoemail",Some(false))
@@ -121,9 +147,9 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
     "return User validation failed " in {
       val serviceMock = mock[UserManagementService]
       val data = User(Some(1),"@gmail.com","demoemail",Some(true))
-      when(serviceMock.createUser(data)).thenReturn("User Validation Failed")
+      when(serviceMock.createUser(data)).thenReturn(Future("User Validation Failed"))
       val status = serviceMock.createUser(data)
-      assert(status == "User Validation Failed")
+      assert(status == Future("User Validation Failed"))
     }
   }
 
@@ -217,7 +243,11 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
   "On Sending null while saving user" should {
     "return false for null user" in {
       val status = DatabaseService.checkIfExists(null)
-      assert(status == false)
+      status.map(status => {
+        if(status == false){
+          assert(status == false)
+        }
+      })
     }
   }
 
