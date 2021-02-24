@@ -16,8 +16,9 @@
 package com.bridgelabz.services
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
+import com.bridgelabz.caseclasses.{ChatCase, EmailCase, GroupChat, User}
 import com.bridgelabz.database.DatabaseService
+import com.bridgelabz.email.Email
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
@@ -123,8 +124,8 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
     "return User not verified" in {
       val mockLogin = mock[UserManagementService]
       val data = User(Some(1),"ruchir@rediffmail.com","demo",Some(false))
-      when(mockLogin.userLogin(data)).thenReturn(Future("User Not verified"))
-      val status = mockLogin.userLogin(data)
+      when(mockLogin.userLogin(data).map(status => status)).thenReturn(Future("User Not verified"))
+      val status = mockLogin.userLogin(data).map(status=> status)
       assert(status === Future("User Not verified"))
     }
   }
@@ -216,8 +217,8 @@ class ChatAppServiceTest extends AnyWordSpec with should.Matchers with Scalatest
 
   "When send email reminder" must  {
     "return mail send" in {
-      val service = new UserManagementService
-      val status = service.sendEmailReminder("xyz@gmail.com")
+      val emailCase = EmailCase("xyz@gmail.com","Test","Test ran")
+      val status = Email.sendEmailReminder(emailCase)
       assert(status == "Mail send")
     }
   }
