@@ -20,6 +20,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaTypes, StatusCod
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.ByteString
+import com.bridgelabz.caseclasses.TokenCase
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.services.UserManagementService
 import org.scalatest.matchers.should
@@ -168,7 +169,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId("xyz@gmail.com")
-      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      val tokenCase = TokenCase("ruchirtd96@gmail.com",id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.OK
@@ -186,7 +188,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId(null)
-      val token = TokenAuthorization.generateToken(null,id)
+      val tokenCase = TokenCase(null,id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.BadRequest
@@ -205,7 +208,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId("hey@rediffmail.com")
-      val token = TokenAuthorization.generateToken("hey@rediffmail.com",id)
+      val tokenCase = TokenCase("hey@rediffmail.com",id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.Unauthorized
@@ -224,7 +228,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId("xyz@gmail.com")
-      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      val tokenCase = TokenCase("ruchirtd96@gmail.com",id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/groupChat").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.OK
@@ -241,7 +246,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId("xyz@gmail.com")
-      val token = TokenAuthorization.generateToken("ruchirtd96@gmail.com",id)
+      val tokenCase = TokenCase("ruchirtd96@gmail.com",id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/viewGroups").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.OK
@@ -353,7 +359,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       val service = new UserManagementService
       val id = service.returnId(null)
-      val token = TokenAuthorization.generateToken(null,id)
+      val tokenCase = TokenCase(null,id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/groupChat").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
         status shouldBe StatusCodes.BadRequest
@@ -381,7 +388,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
     "return get some ver" in {
       val service = new UserManagementService
       val id = service.returnId("ruchir99@gmail.com")
-      val token = TokenAuthorization.generateToken("ruchir99@gmail.com",id)
+      val tokenCase = TokenCase("ruchir99@gmail.com",id)
+      val token = TokenAuthorization.generateToken(tokenCase)
       Get("/user/verify?token=" + token + "&name=ruchir99@gmail.com")~> new UserManagementRoutes(new UserManagementService).routes ~> check {
         handled shouldBe true
       }
