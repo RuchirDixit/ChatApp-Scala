@@ -18,14 +18,13 @@ package com.bridgelabz.database
 import java.util.regex.Pattern
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
-import com.bridgelabz.utilities.Utilities
+import com.bridgelabz.database.interfaces.{IChatService, IGetUserService, IGroupService, ISaveUserService}
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType
 import org.mongodb.scala.Document
-import concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future, TimeoutException}
+import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 
-object DatabaseService extends LazyLogging with DatabaseServiceTrait {
+object DatabaseService extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService {
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
   /**
@@ -33,15 +32,15 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    * @param credentials : Data about the user that is getting stored in database
    * @return : If data is entered successfully then returns SUCCESS or else return FAILURE
    */
-  def saveUser(credentials:User) : String = {
+  def saveUser(credentials:User) : Future[String] = {
     val emailRegexPattern = "^[a-zA-Z]+([+.#&_-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+.[a-zA-Z]{2,3}([.][a-zA-Z]{2,3})*$"
-    if(Pattern.compile(emailRegexPattern).matcher(credentials.name).matches()){
+    if(Pattern.compile(emailRegexPattern).matcher(credentials.name).matches()) {
       logger.info("Email valid!")
       var length = 0
       try {
-        val secondsForAwait = 120
-        val users = Utilities.tryAwait(getUsers(),secondsForAwait)
-        length = users.size
+        getUsers().map(users =>
+          length = users.size
+        )
       }
       catch {
         case timeoutException: TimeoutException =>
@@ -51,32 +50,32 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
       }
 
       val ifUserExists = checkIfExists(credentials.name)
-      if(ifUserExists)
-      {
-        logger.error("User exists!")
-        "Failure"
-      }
-      else
-      {
-        val future = DatabaseConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
-        try{
-          val duration = 10
-          Utilities.tryAwait(future,duration)
-          "Success"
+      ifUserExists.map(ifUserExists => {
+        if (ifUserExists) {
+          logger.error("User exists!")
+          "Failure"
         }
-        catch {
-          case timeoutException:TimeoutException =>
-            logger.error(timeoutException.toString)
-            "Failure"
-          case exception: Exception =>
-            logger.info(exception.toString)
-            "Failure"
+        else
+        {
+          val future = DatabaseConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
+          try{
+            future.map(future => future)
+            "Success"
+          }
+          catch {
+            case timeoutException:TimeoutException =>
+              logger.error(timeoutException.toString)
+              "Failure"
+            case exception: Exception =>
+              logger.info(exception.toString)
+              "Failure"
+          }
         }
-      }
+      })
     }
     else {
       logger.error("Invalid email")
-      "Validation Failed"
+      Future("Validation Failed")
     }
   }
 
@@ -85,27 +84,26 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    * @param name : Name of user to check whether this user already exists
    * @return : If user already exists it returns true or else it returns false
    */
-  def checkIfExists(name : String): Boolean = {
-    try {
-      val users = Await.result(getUsers(),10.seconds)
-      users.foreach(document => document.foreach(bsonObject =>
-        if(bsonObject._2.getBsonType() == BsonType.STRING){
-          if(bsonObject._2.asString().getValue().equals(name)) {
-            return true
-          }
+  def checkIfExists(name : String): Future[Boolean] = {
+      getUsers().map(users => {
+        try {
+          var userExists : Boolean = false
+          users.foreach(document => document.foreach(bsonObject =>
+            if(bsonObject._2.getBsonType() == BsonType.STRING){
+              if(bsonObject._2.asString().getValue().equals(name)) {
+                userExists = true
+              }
+            }
+          ))
+          userExists
         }
-      ))
-      false
+        catch {
+          case exception: Exception => logger.error(exception.toString)
+            false
+        }
+
+      })
     }
-    catch {
-      case timeoutException: TimeoutException =>
-        logger.error(timeoutException.toString)
-        false
-      case exception: Exception =>
-        logger.info(exception.toString)
-        false
-    }
-  }
 
   /**
    * Saves chat messages to Chat collections
@@ -113,10 +111,9 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
    * @return : String "Message sent" to inform that message is saved to database
    */
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
-    try
-      {
-        val chatAddedFuture = DatabaseConfig.saveChatMessage(sendMessageRequest)
-      Await.result(chatAddedFuture,60.seconds)
+    try {
+      val chatAddedFuture = DatabaseConfig.saveChatMessage(sendMessageRequest)
+      chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent"
     }
     catch {
@@ -152,7 +149,7 @@ object DatabaseService extends LazyLogging with DatabaseServiceTrait {
   def saveToGroupChat(groupChatInfo: GroupChat) : String = {
     try{
       val chatAddedFuture = DatabaseConfig.saveGroupChat(groupChatInfo)
-      Await.result(chatAddedFuture,60.seconds)
+      chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent to group"
     }
     catch {
