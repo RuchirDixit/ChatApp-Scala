@@ -25,6 +25,7 @@ object Utilities {
    * @tparam T generic object type to be extracted
    * @return result else None in case of exception.
    */
+    @Deprecated
   def tryAwait[T](future: Future[T], time: Int): Option[T] = {
     try {
       Some(Await.result(future, time.seconds))
