@@ -16,12 +16,15 @@
 package com.bridgelabz.actors
 
 import akka.actor.Actor
+import com.bridgelabz.caseclasses.EmailCase
+import com.bridgelabz.email.Email
 import com.bridgelabz.services.UserManagementService
 
 class EmailNotificationActor extends Actor {
   def receive: Receive = {
     case receiverAddress:String =>
-      val service = new UserManagementService
-      service.sendEmailReminder(receiverAddress)
+      val email = EmailCase(receiverAddress,"Full version Reminder",
+        "Purchase full version for more exciting features for chatting. Pay $20 for full version. Buy Now!")
+      Email.sendEmailReminder(email)
   }
 }
