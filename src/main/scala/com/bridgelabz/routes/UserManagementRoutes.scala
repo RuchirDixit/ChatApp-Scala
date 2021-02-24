@@ -25,19 +25,17 @@ import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
 import com.bridgelabz.database.{DatabaseConfig, DatabaseService, SaveToDatabaseActor}
+import com.bridgelabz.email.Email
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{ChatCaseJsonProtocol, GroupChatJsonProtocol, JsonResponseProtocol}
 import com.bridgelabz.services.UserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
-import courier.{Envelope, Mailer, Text}
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
-import javax.mail.internet.InternetAddress
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Updates.set
-
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContextExecutor, TimeoutException}
+import scala.concurrent.{ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
 class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
@@ -53,20 +51,23 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
          */
         path("login") {
           (post & entity(as[User])) { loginRequest =>
-            logger.info("Login response: " + service.userLogin(loginRequest))
-            if (service.userLogin(loginRequest) == "Login Successful") {
-              val id = service.returnId(loginRequest.name)
-              val token: String = TokenAuthorization.generateToken(loginRequest.name, id)
-              respondWithHeaders(RawHeader("token",token)) {
-                complete(StatusCodes.OK,JsonResponse("Login successful."))
-              }
-            }
-            else if (service.userLogin(loginRequest) == "User Not verified") {
-              logger.error("User's email not verified")
-              complete(StatusCodes.UnavailableForLegalReasons,JsonResponse("User's Email Id is not verified!"))
-            } else {
-              logger.error("Invalid credentials")
-              complete(StatusCodes.Unauthorized, JsonResponse("Invalid credentials. User not found! Try again with correct details."))
+            onComplete(service.userLogin(loginRequest)) {
+              case Success(response) =>
+                if (response == "Login Successful") {
+                  val id = service.returnId(loginRequest.name)
+                  val tokenCase = TokenCase(loginRequest.name,id)
+                  val token: String = TokenAuthorization.generateToken(tokenCase)
+                  respondWithHeaders(RawHeader("token",token)) {
+                    complete(StatusCodes.OK,JsonResponse("Login successful."))
+                  }
+                }
+                else if (response == "User Not verified") {
+                  logger.error("User's email not verified")
+                  complete(StatusCodes.UnavailableForLegalReasons,JsonResponse("User's Email Id is not verified!"))
+                } else {
+                  logger.error("Invalid credentials")
+                  complete(StatusCodes.Unauthorized, JsonResponse("Invalid credentials. User not found! Try again with correct details."))
+                }
             }
           }
         } ~
@@ -137,45 +138,40 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
           path("register") {
             (post & entity(as[User])) { createUserRequest =>
               val userCreatedResponse = service.createUser(createUserRequest)
-              logger.info("Create response::" + userCreatedResponse)
-              if (userCreatedResponse == "User created") {
-                logger.info("User object in register:" + createUserRequest)
-                val a:Option[Any] = Some(createUserRequest.id)
-                val id = (a match {
-                  case Some(x:Int) => x
-                  case _ => Int.MinValue
-                })
-                val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
-                val mailer = Mailer(sys.env("GMAILMAILER"), sys.env("SMTPPORT").toInt)
-                  .auth(true)
-                  .as(sys.env("SENDEREMAIL"), sys.env("PASSWORD"))
-                  .startTls(true)()
-                mailer(Envelope.from(new InternetAddress(sys.env("SENDEREMAIL")))
-                  .to(new InternetAddress(createUserRequest.name))
-                  .subject("Token")
-                  .content(Text("Thanks for registering! Click on this link to verify your email address: http://"
-                    + sys.env("HOST") + ":" + sys.env("PORT") + "/user/verify?token="
-                    + token + "&name=" + createUserRequest.name)))
-                  .onComplete {
-                    case Success(_) =>
-                      // $COVERAGE-OFF$
-                      val schedulerActor = system.actorOf(Props[EmailNotificationActor], "schedulerActor")
-                      system.scheduler.schedule(30.seconds, 120.seconds, schedulerActor, createUserRequest.name)
-                      logger.info("Message delivered. Email verified!")
-                    case Failure(_) =>
-                      logger.error("Failed to deliver mail.")
-                      // $COVERAGE-OFF$
-                      complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
+              onComplete(userCreatedResponse) {
+                case Success(response) =>
+                  if (response == "User created") {
+                    logger.info("User object in register:" + createUserRequest)
+                    val a:Option[Any] = Some(createUserRequest.id)
+                    val id = (a match {
+                      case Some(x:Int) => x
+                      case _ => Int.MinValue
+                    })
+                    val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
+                    val email = EmailCase(createUserRequest.name,"Token","Thanks for registering! Click on this link to verify your email address: http://"
+                      + sys.env("HOST") + ":" + sys.env("PORT") + "/user/verify?token="
+                      + token + "&name=" + createUserRequest.name)
+                    Email.sendEmail(email).onComplete {
+                        case Success(_) =>
+                          // $COVERAGE-OFF$
+                          val schedulerActor = system.actorOf(Props[EmailNotificationActor], "schedulerActor")
+                          system.scheduler.schedule(30.seconds, 120.seconds, schedulerActor, createUserRequest.name)
+                          logger.info("Message delivered. Email verified!")
+                        case Failure(_) =>
+                          logger.error("Failed to deliver mail.")
+                          // $COVERAGE-OFF$
+                          complete(StatusCodes.NotFound, JsonResponse("Failed To Deliver Mail. Please check the email again."))
+                      }
+                    complete((StatusCodes.OK,JsonResponse("User Registered! Now you can Login using these details.")))
+                  } else if (response == "User Validation Failed") {
+                    logger.error("Email address not correct according to pattern")
+                    complete(StatusCodes.BadRequest -> JsonResponse("Error! Please enter correct email address."))
                   }
-                complete((StatusCodes.OK,JsonResponse("User Registered! Now you can Login using these details.")))
-              } else if (userCreatedResponse == "User Validation Failed") {
-                logger.error("Email address not correct according to pattern")
-                complete(StatusCodes.BadRequest -> JsonResponse("Error! Please enter correct email address."))
-              }
-              // $COVERAGE-OFF$
-              else {
-                logger.error("User already exists")
-                complete(StatusCodes.Unauthorized, JsonResponse("Error! User already exists!"))
+                  // $COVERAGE-OFF$
+                  else {
+                    logger.error("User already exists")
+                    complete(StatusCodes.Unauthorized, JsonResponse("Error! User already exists!"))
+                  }
               }
             }
           } ~
