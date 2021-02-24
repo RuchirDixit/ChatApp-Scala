@@ -19,24 +19,25 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives.{complete, optionalHeaderValueByName, provide}
 import authentikat.jwt.{JsonWebToken, JwtClaimsSet, JwtHeader}
+import com.bridgelabz.caseclasses.TokenCase
 import com.typesafe.scalalogging.LazyLogging
 
 object TokenAuthorization extends LazyLogging{
-  private val secretKey = "super_secret_key"
+  private val secretKey = sys.env("TOKENKEY")
   private val header = JwtHeader("HS256")
 
   /**
    * To generate token using id and name
-   * @param username : using username field to generate token
+   * @param token : token object to pass username and id
    * @return: : String as a token for authentication
    */
-  def generateToken(username: String,id:Int): String = {
+  def generateToken(token: TokenCase): String = {
     logger.info("in generate token")
 
     val claims = JwtClaimsSet(
       Map(
-        "id" -> id,
-        "name" -> username
+        "id" -> token.id,
+        "name" -> token.username
       )
     )
     JsonWebToken(header, claims, secretKey)
