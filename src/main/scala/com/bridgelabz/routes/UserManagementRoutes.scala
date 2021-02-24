@@ -147,7 +147,8 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
                       case Some(x:Int) => x
                       case _ => Int.MinValue
                     })
-                    val token: String = TokenAuthorization.generateToken(createUserRequest.name, id)
+                    val tokenCase = TokenCase(createUserRequest.name,id)
+                    val token: String = TokenAuthorization.generateToken(tokenCase)
                     val email = EmailCase(createUserRequest.name,"Token","Thanks for registering! Click on this link to verify your email address: http://"
                       + sys.env("HOST") + ":" + sys.env("PORT") + "/user/verify?token="
                       + token + "&name=" + createUserRequest.name)
