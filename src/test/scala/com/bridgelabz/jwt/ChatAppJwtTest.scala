@@ -20,12 +20,17 @@ import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.util.ByteString
+import com.bridgelabz.database.{DatabaseService, MongoConfig}
 import com.bridgelabz.routes.UserManagementRoutes
 import com.bridgelabz.services.UserManagementService
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 
 class ChatAppJwtTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest {
+  val mongoConfig = new MongoConfig
+  val databaseService = new DatabaseService(mongoConfig)
+  val userManagementService = new UserManagementService(databaseService)
+  val routes = new UserManagementRoutes(userManagementService,mongoConfig,databaseService)
   "A router" should {
   "return unauthorized" in {
     val jsonRequest = ByteString(
@@ -36,7 +41,7 @@ class ChatAppJwtTest extends AnyWordSpec with should.Matchers with ScalatestRout
          |}
               """.stripMargin)
     Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
-      addCredentials(OAuth2BearerToken("anyrandomtoken")) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+      addCredentials(OAuth2BearerToken("anyrandomtoken")) ~> Route.seal(routes.routes) ~> check {
       status shouldBe StatusCodes.Unauthorized
     }
   }
@@ -51,7 +56,7 @@ class ChatAppJwtTest extends AnyWordSpec with should.Matchers with ScalatestRout
            |}
               """.stripMargin)
       Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
-        addCredentials(OAuth2BearerToken(null)) ~> Route.seal(new UserManagementRoutes(new UserManagementService).routes) ~> check {
+        addCredentials(OAuth2BearerToken(null)) ~> Route.seal(routes.routes) ~> check {
         status shouldBe StatusCodes.InternalServerError
       }
     }
