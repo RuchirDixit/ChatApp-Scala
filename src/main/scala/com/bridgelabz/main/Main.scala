@@ -18,10 +18,13 @@ package com.bridgelabz.main
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.bridgelabz.actors.ActorSystemFactory
+import com.bridgelabz.database.{DatabaseService, MongoConfig}
 import com.bridgelabz.routes.UserManagementRoutes
 import com.bridgelabz.services.UserManagementService
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import org.mongodb.scala.MongoClient
+
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 // $COVERAGE-OFF$
@@ -32,8 +35,10 @@ object Main extends App with LazyLogging {
   implicit val system = ActorSystemFactory.system
   implicit val mat = ActorMaterializer()
   implicit val executor: ExecutionContext = system.dispatcher
-  val userManagementService = new UserManagementService
-  val userManagementRoutes = new UserManagementRoutes(userManagementService)
+  val mongoConfig = new MongoConfig
+  val databaseService = new DatabaseService(mongoConfig)
+  val userManagementService = new UserManagementService(databaseService)
+  val userManagementRoutes = new UserManagementRoutes(userManagementService,mongoConfig,databaseService)
   private val routes = userManagementRoutes.routes
   val bindingFuture = Http().bindAndHandle(routes,host,port_number)
   logger.info(s"Server online at http://" + host + ":" + port_number)
