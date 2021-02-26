@@ -18,16 +18,20 @@ package com.bridgelabz.email
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
 import com.bridgelabz.caseclasses.EmailCase
+import com.bridgelabz.database.{DatabaseService, MongoConfig}
 import com.bridgelabz.services.UserManagementService
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
 import javax.mail.internet.InternetAddress
+import org.mongodb.scala.MongoClient
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object Email extends LazyLogging {
-  val service = new UserManagementService
+  val mongoConfig = new MongoConfig
+  val databaseService = new DatabaseService(mongoConfig)
+  val service = new UserManagementService(databaseService)
   implicit val executionContext = service.executionContext
 
   def sendEmail(email: EmailCase) : Future[Unit] = {
