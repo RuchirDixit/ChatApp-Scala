@@ -23,7 +23,7 @@ import org.bson.BsonType
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
-class UserManagementService extends LazyLogging {
+class UserManagementService(databaseService: DatabaseService) extends LazyLogging {
 
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -35,7 +35,7 @@ class UserManagementService extends LazyLogging {
    */
   def userLogin(loginRequest: User): Future[String] = {
     //val users = Await.result(DatabaseService.getUsersUsingFilter(loginRequest.name),60.seconds)
-    DatabaseService.getUsersUsingFilter(loginRequest.name).map(users => {
+    databaseService.getUsersUsingFilter(loginRequest.name).map(users => {
       users.foreach(document => document.foreach(bsonObject =>
         if(bsonObject._2.getBsonType() == BsonType.STRING) {
           if(bsonObject._2.asString().getValue.equals(loginRequest.name)){
@@ -69,7 +69,7 @@ class UserManagementService extends LazyLogging {
    * @return : If successful login return "User created"
    */
   def createUser(createUserRequest: User):  Future[String] = {
-    val status = DatabaseService.saveUser(createUserRequest)
+    val status = databaseService.saveUser(createUserRequest)
      status
     }
 
@@ -80,7 +80,7 @@ class UserManagementService extends LazyLogging {
    * @return : Returns String message as "Message added if message successfully sent or else "Sending Msg failed" if failed to deliver message"
    */
   def sendMessage(sendMessageRequest: ChatCase) : String = {
-    val status = DatabaseService.saveChatMessage(sendMessageRequest)
+    val status = databaseService.saveChatMessage(sendMessageRequest)
     if(status.equals("Message sent")){
       "Message added"
     }
@@ -96,7 +96,7 @@ class UserManagementService extends LazyLogging {
    * @return : Id of user with specified names
    */
   def returnId(name: String) : Int = {
-    val users = Await.result(DatabaseService.getUsersUsingFilter(name),60.seconds)
+    val users = Await.result(databaseService.getUsersUsingFilter(name),60.seconds)
     users.foreach(document => document.foreach(bsonObject =>
       if(bsonObject._2.getBsonType == BsonType.INT32){
         return bsonObject._2.asInt32().getValue
@@ -127,7 +127,7 @@ class UserManagementService extends LazyLogging {
    * @return : String message if message is added to group or not
    */
   def saveGroupChat(groupChatInfo:GroupChat) : String = {
-    val status = DatabaseService.saveToGroupChat(groupChatInfo)
+    val status = databaseService.saveToGroupChat(groupChatInfo)
     if(status.equals("Message sent to group")){
       "Message added"
     }
