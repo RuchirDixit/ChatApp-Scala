@@ -23,7 +23,8 @@ import com.typesafe.scalalogging.LazyLogging
 class SaveToDatabaseActor extends Actor with LazyLogging{
   override def receive: Receive = {
     case chat:ChatCase =>
-      val userManagementService = new UserManagementService
+      val databaseService = new DatabaseService(new MongoConfig)
+      val userManagementService = new UserManagementService(databaseService)
       val response = userManagementService.sendMessage(chat)
       logger.info(response)
       sender() ! response
