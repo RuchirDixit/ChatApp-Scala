@@ -15,7 +15,7 @@
 // limitations under the License.
 package com.bridgelabz.routes
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.Props
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
@@ -24,7 +24,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
-import com.bridgelabz.database.{DatabaseConfig, DatabaseService, SaveToDatabaseActor}
+import com.bridgelabz.database.{DatabaseService, MongoConfig, SaveToDatabaseActor}
 import com.bridgelabz.email.Email
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{ChatCaseJsonProtocol, GroupChatJsonProtocol, JsonResponseProtocol}
@@ -38,7 +38,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
-class UserManagementRoutes(service: UserManagementService) extends PlayJsonSupport with LazyLogging
+class UserManagementRoutes(service: UserManagementService,mongoConfig: MongoConfig,databaseService: DatabaseService) extends PlayJsonSupport with LazyLogging
   with ChatCaseJsonProtocol with JsonResponseProtocol with GroupChatJsonProtocol {
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -82,7 +82,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               (token, name) =>
                 val jwsObject = JWSObject.parse(token)
                 if (jwsObject.getPayload.toJSONObject.get("name").equals(name)) {
-                  val updateUserAsVerified = DatabaseConfig.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
+                  val updateUserAsVerified = mongoConfig.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
                   onComplete(updateUserAsVerified) {
                     case Success(_) =>
                       logger.info("Successfully verified user!")
@@ -107,7 +107,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               val senderId = service.returnId(messageRequest.sender)
               val receiverId = service.returnId(messageRequest.receiver)
               val roomname = service.generateGroupChatName(messageRequest.sender, messageRequest.receiver, senderId.toString, receiverId)
-              val messagesByGroupName = DatabaseConfig.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
+              val messagesByGroupName = mongoConfig.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
               onComplete(messagesByGroupName) {
                 case Success(groupMessages) =>
                   logger.info("Successfully fetched roomname")
@@ -186,10 +186,10 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
               TokenAuthorization.authenticated { token =>
                 logger.info("Token:" + token.values.toList.last.toString())
                 logger.info("receiver: " + getDataToSaveChats.receiver)
-                if (DatabaseService.checkIfExists(getDataToSaveChats.receiver) == true) {
+                if (databaseService.checkIfExists(getDataToSaveChats.receiver) == true) {
                   val receiverId = service.returnId(getDataToSaveChats.receiver)
                   val senderId = token.values.toList.head.toString
-                  val userService = new UserManagementService
+                  val userService = new UserManagementService(databaseService)
                   val groupChatName = userService.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
                   val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
                   implicit val timeout = Timeout(10.seconds)
@@ -245,7 +245,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             (post & entity(as[GroupMessages])) { messageRequest =>
               try {
                 val groupname = messageRequest.groupName
-                val messagesByGroupName = DatabaseConfig.collectionForGroup.find(equal("receiver", groupname)).toFuture()
+                val messagesByGroupName = mongoConfig.collectionForGroup.find(equal("receiver", groupname)).toFuture()
                 onComplete(messagesByGroupName) {
                   case Success(groupMessages) => complete(groupMessages)
                   case Failure(error) => complete(error)
@@ -270,7 +270,7 @@ class UserManagementRoutes(service: UserManagementService) extends PlayJsonSuppo
             post {
               TokenAuthorization.authenticated { token =>
                 val sender = token.values.toList.last.toString()
-                val groupsOfSender = DatabaseConfig.collectionForGroup.find(equal("sender", sender)).toFuture()
+                val groupsOfSender = mongoConfig.collectionForGroup.find(equal("sender", sender)).toFuture()
                 logger.info("groups in which sender is added: " + groupsOfSender)
                 complete(groupsOfSender)
               }
