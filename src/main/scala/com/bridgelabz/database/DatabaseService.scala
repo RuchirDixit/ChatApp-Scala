@@ -14,7 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 package com.bridgelabz.database
-
 import java.util.regex.Pattern
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
@@ -24,7 +23,7 @@ import org.bson.BsonType
 import org.mongodb.scala.Document
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 
-object DatabaseService extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService {
+class DatabaseService(mongoConfig: MongoConfig) extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService {
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
   /**
@@ -57,7 +56,7 @@ object DatabaseService extends LazyLogging with IGetUserService with IChatServic
         }
         else
         {
-          val future = DatabaseConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
+          val future = mongoConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
           try{
             future.map(future => future)
             "Success"
@@ -112,7 +111,7 @@ object DatabaseService extends LazyLogging with IGetUserService with IChatServic
    */
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
     try {
-      val chatAddedFuture = DatabaseConfig.saveChatMessage(sendMessageRequest)
+      val chatAddedFuture = mongoConfig.saveChatMessage(sendMessageRequest)
       chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent"
     }
@@ -128,7 +127,7 @@ object DatabaseService extends LazyLogging with IGetUserService with IChatServic
 
   // Returns All the users present inside database in the form of future
   def getUsers() : Future[Seq[Document]] = {
-    DatabaseConfig.find()
+    mongoConfig.find()
   }
 
 
@@ -138,7 +137,7 @@ object DatabaseService extends LazyLogging with IGetUserService with IChatServic
    * @return : Future of users that are returned using find method from database
    */
   def getUsersUsingFilter(name : String) : Future[Seq[Document]] = {
-    DatabaseConfig.find(name)
+    mongoConfig.find(name)
   }
 
   /**
@@ -148,7 +147,7 @@ object DatabaseService extends LazyLogging with IGetUserService with IChatServic
    */
   def saveToGroupChat(groupChatInfo: GroupChat) : String = {
     try{
-      val chatAddedFuture = DatabaseConfig.saveGroupChat(groupChatInfo)
+      val chatAddedFuture = mongoConfig.saveGroupChat(groupChatInfo)
       chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent to group"
     }
