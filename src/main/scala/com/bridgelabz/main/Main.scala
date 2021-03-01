@@ -29,9 +29,10 @@ import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 // $COVERAGE-OFF$
 object Main extends App with LazyLogging {
+  val actorName = "QuickStart"
   private val _ = ConfigFactory.load()
   private val host = sys.env("HOST")
-  private val port_number = sys.env("PORT").toInt
+  private val portNumber = sys.env("PORT").toInt
   implicit val system = ActorSystemFactory.system
   implicit val mat = ActorMaterializer()
   implicit val executor: ExecutionContext = system.dispatcher
@@ -40,8 +41,8 @@ object Main extends App with LazyLogging {
   val userManagementService = new UserManagementService(databaseService)
   val userManagementRoutes = new UserManagementRoutes(userManagementService,mongoConfig,databaseService)
   private val routes = userManagementRoutes.routes
-  val bindingFuture = Http().bindAndHandle(routes,host,port_number)
-  logger.info(s"Server online at http://" + host + ":" + port_number)
+  val bindingFuture = Http().bindAndHandle(routes,host,portNumber)
+  logger.info(s"Server online at http://" + host + ":" + portNumber)
   StdIn.readLine()
   bindingFuture
     .onComplete(_ => system.terminate())
