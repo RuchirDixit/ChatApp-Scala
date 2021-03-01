@@ -24,11 +24,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
-import com.bridgelabz.database.{DatabaseService, MongoConfig, SaveToDatabaseActor}
+import com.bridgelabz.database.interfaces.{IDatabaseService, IMongoConfig}
+import com.bridgelabz.database.SaveToDatabaseActor
 import com.bridgelabz.email.Email
 import com.bridgelabz.jwt.TokenAuthorization
 import com.bridgelabz.marshallers.{ChatCaseJsonProtocol, GroupChatJsonProtocol, JsonResponseProtocol}
-import com.bridgelabz.services.UserManagementService
+import com.bridgelabz.services.interfaces.IUserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
@@ -38,7 +39,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
-class UserManagementRoutes(service: UserManagementService,mongoConfig: MongoConfig,databaseService: DatabaseService) extends PlayJsonSupport with LazyLogging
+class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoConfig,databaseService: IDatabaseService) extends PlayJsonSupport with LazyLogging
   with ChatCaseJsonProtocol with JsonResponseProtocol with GroupChatJsonProtocol {
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -189,11 +190,10 @@ class UserManagementRoutes(service: UserManagementService,mongoConfig: MongoConf
                 if (databaseService.checkIfExists(getDataToSaveChats.receiver) == true) {
                   val receiverId = service.returnId(getDataToSaveChats.receiver)
                   val senderId = token.values.toList.head.toString
-                  val userService = new UserManagementService(databaseService)
-                  val groupChatName = userService.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
+                  val groupChatName = service.generateGroupChatName(token.values.toList.last.toString(), getDataToSaveChats.receiver, senderId, receiverId)
                   val saveToChat = getDataToSaveChats.copy(sender = Some(token.values.toList.last.toString()),groupChatName = Some(groupChatName))
                   implicit val timeout = Timeout(10.seconds)
-                  val saveMessageActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
+                  val saveMessageActor = system.actorOf(Props(new SaveToDatabaseActor(service)), "saveActor")
                   val futureResponse = saveMessageActor ? saveToChat
                   onComplete(futureResponse) {
                     case Success(result) =>
