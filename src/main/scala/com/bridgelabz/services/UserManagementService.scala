@@ -17,24 +17,23 @@ package com.bridgelabz.services
 
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
-import com.bridgelabz.database.DatabaseService
+import com.bridgelabz.database.interfaces.IDatabaseService
+import com.bridgelabz.services.interfaces.IUserManagementService
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
-class UserManagementService(databaseService: DatabaseService) extends LazyLogging {
+class UserManagementService(databaseService: IDatabaseService) extends LazyLogging with IUserManagementService {
 
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   /**
-   *
-   * @param loginRequest : Request object containing details of login
    * Fetches data from database and checks if credentials passed matches for login
+   * @param loginRequest : Request object containing details of login
    * @return : If successful login return "Login Successful"
    */
   def userLogin(loginRequest: User): Future[String] = {
-    //val users = Await.result(DatabaseService.getUsersUsingFilter(loginRequest.name),60.seconds)
     databaseService.getUsersUsingFilter(loginRequest.name).map(users => {
       users.foreach(document => document.foreach(bsonObject =>
         if(bsonObject._2.getBsonType() == BsonType.STRING) {
@@ -63,9 +62,8 @@ class UserManagementService(databaseService: DatabaseService) extends LazyLoggin
   }
 
   /**
-   *
-   * @param createUserRequest : Request object containing details of registering user
    *  It is used to save users
+   * @param createUserRequest : Request object containing details of registering user
    * @return : If successful login return "User created"
    */
   def createUser(createUserRequest: User):  Future[String] = {
@@ -74,9 +72,8 @@ class UserManagementService(databaseService: DatabaseService) extends LazyLoggin
     }
 
   /**
-   *
-   * @param sendMessageRequest: Contains request of type Chat which has sender, receiver and message to be send
    * It is used to save messages to chat
+   * @param sendMessageRequest: Contains request of type Chat which has sender, receiver and message to be send
    * @return : Returns String message as "Message added if message successfully sent or else "Sending Msg failed" if failed to deliver message"
    */
   def sendMessage(sendMessageRequest: ChatCase) : String = {
@@ -90,9 +87,8 @@ class UserManagementService(databaseService: DatabaseService) extends LazyLoggin
   }
 
   /**
-   *
-   * @param name : Accepts name of user whose ID we have to find
    *  It searches for all users and returns ID of mentioned user
+   * @param name : Accepts name of user whose ID we have to find
    * @return : Id of user with specified names
    */
   def returnId(name: String) : Int = {
@@ -106,12 +102,11 @@ class UserManagementService(databaseService: DatabaseService) extends LazyLoggin
   }
 
   /**
-   *
+   *  It generates group chat name by concatenating id and names in sorted order
    * @param senderName : Name of sender of message
    * @param receiverName : Name of receiver of message
    * @param senderId : ID of sender of message
    * @param receiverId : ID of receiver of message
-   *  It generates group chat name by concatenating id and names in sorted order
    * @return : Group chat name as s String
    */
   def generateGroupChatName(senderName:String,receiverName:String,senderId: String, receiverId: Int): String = {
