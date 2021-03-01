@@ -17,13 +17,14 @@ package com.bridgelabz.database
 import java.util.regex.Pattern
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
-import com.bridgelabz.database.interfaces.{IChatService, IGetUserService, IGroupService, ISaveUserService}
+import com.bridgelabz.database.interfaces.{IChatService, IDatabaseService, IGetUserService, IGroupService, IMongoConfig, ISaveUserService}
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType
 import org.mongodb.scala.Document
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 
-class DatabaseService(mongoConfig: MongoConfig) extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService {
+class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService
+  with IDatabaseService {
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
   /**
