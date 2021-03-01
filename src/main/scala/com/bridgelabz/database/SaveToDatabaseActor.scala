@@ -17,14 +17,13 @@ package com.bridgelabz.database
 
 import akka.actor.Actor
 import com.bridgelabz.caseclasses.ChatCase
-import com.bridgelabz.services.UserManagementService
+import com.bridgelabz.services.interfaces.IUserManagementService
 import com.typesafe.scalalogging.LazyLogging
 
-class SaveToDatabaseActor extends Actor with LazyLogging{
+class SaveToDatabaseActor(userManagementService: IUserManagementService)
+  extends Actor with LazyLogging{
   override def receive: Receive = {
     case chat:ChatCase =>
-      val databaseService = new DatabaseService(new MongoConfig)
-      val userManagementService = new UserManagementService(databaseService)
       val response = userManagementService.sendMessage(chat)
       logger.info(response)
       sender() ! response
