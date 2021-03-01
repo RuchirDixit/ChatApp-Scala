@@ -16,7 +16,9 @@
 package com.bridgelabz.actors
 
 import akka.actor.ActorSystem
+import com.bridgelabz.main.Main
 
 object ActorSystemFactory {
-  implicit val system = ActorSystem("QuickStart")
+  val actorName = Main.actorName
+  implicit val system = ActorSystem(actorName)
 }
