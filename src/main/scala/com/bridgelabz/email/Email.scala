@@ -23,8 +23,6 @@ import com.bridgelabz.services.UserManagementService
 import com.typesafe.scalalogging.LazyLogging
 import courier.{Envelope, Mailer, Text}
 import javax.mail.internet.InternetAddress
-import org.mongodb.scala.MongoClient
-
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
