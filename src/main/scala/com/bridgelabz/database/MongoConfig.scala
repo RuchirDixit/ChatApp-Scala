@@ -19,13 +19,13 @@ import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Projections.excludeId
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat}
+import com.bridgelabz.database.interfaces.IMongoConfig
 import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.bson.codecs.{DEFAULT_CODEC_REGISTRY, Macros}
 import org.mongodb.scala.{Completed, Document, MongoClient, MongoCollection, MongoDatabase}
-
 import scala.concurrent.{ExecutionContext, Future}
 
-class MongoConfig {
+class MongoConfig extends IMongoConfig{
 
   val chatCodecProvider = Macros.createCodecProvider[ChatCase]()
   val groupCodecProvider = Macros.createCodecProvider[GroupChat]()
@@ -53,25 +53,49 @@ class MongoConfig {
   val collectionForGroup: MongoCollection[GroupChat] = database.getCollection[GroupChat](groupCollection)
   collectionForGroup.drop()
 
+  /**
+   * To add user to Chat App System
+   * @param id : Id of user
+   * @param name : name of user
+   * @param password : user password
+   * @param boolean : isVerified status of user
+   * @return : Future[Completed]
+   */
   def addUser(id: Some[Int], name: String, password: String, boolean: Boolean) : Future[Completed] = {
     val userToBeAdded : Document = Document("id" -> id,"name" -> name, "password" -> password, "isVerified" -> boolean)
     collectionForUserRegistration.insertOne(userToBeAdded).toFuture()
   }
 
+  /**
+   * To save messages to Chat
+   * @param sendMessageRequest: ChatCase object to store sender, receiver,message, chatName
+   * @return : Future[Completed]
+   */
   def saveChatMessage(sendMessageRequest: ChatCase) : Future[Completed] = {
     val chatMessage = ChatCase(sendMessageRequest.sender,sendMessageRequest.receiver,sendMessageRequest.message,sendMessageRequest.groupChatName)
     collectionForChat.insertOne(chatMessage).toFuture()
   }
 
+  /**
+   * To save messages to group chat
+   * @param groupChatInfo : GroupChat object to store sender, receiver,message
+   * @return
+   */
   def saveGroupChat(groupChatInfo: GroupChat) : Future[Completed] = {
     val groupChat = GroupChat(groupChatInfo.sender,groupChatInfo.receiver,groupChatInfo.message)
     collectionForGroup.insertOne(groupChat).toFuture()
   }
 
+  // To find all users
   def find(): Future[Seq[Document]] = {
     collectionForUserRegistration.find().toFuture()
   }
 
+  /**
+   * To find user based on name
+   * @param name : name of user to search
+   * @return : Future[Seq[Document]]
+   */
   def find(name: String): Future[Seq[Document]] = {
     collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
   }
