@@ -16,7 +16,8 @@
 package com.bridgelabz.database.interfaces
 
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
-import org.mongodb.scala.Document
+import org.mongodb.scala.{Document, result}
+
 import scala.concurrent.Future
 
 trait IDatabaseService {
