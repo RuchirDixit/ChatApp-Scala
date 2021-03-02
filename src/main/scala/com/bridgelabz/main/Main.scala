@@ -37,6 +37,7 @@ object Main extends App with LazyLogging {
   implicit val mat = ActorMaterializer()
   implicit val executor: ExecutionContext = system.dispatcher
   val mongoConfig = new MongoConfig
+  mongoConfig.setUp()
   val databaseService = new DatabaseService(mongoConfig)
   val userManagementService = new UserManagementService(databaseService)
   val userManagementRoutes = new UserManagementRoutes(userManagementService,mongoConfig,databaseService)
