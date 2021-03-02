@@ -19,6 +19,6 @@ import akka.actor.ActorSystem
 import com.bridgelabz.main.Main
 
 object ActorSystemFactory {
-  val actorName = Main.actorName
-  implicit val system = ActorSystem(actorName)
+  //val actorName = Main.actorName
+  implicit val system = ActorSystem("ChatAppProject")
 }
