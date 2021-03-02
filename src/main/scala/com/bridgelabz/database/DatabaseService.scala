@@ -14,16 +14,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 package com.bridgelabz.database
+
 import java.util.regex.Pattern
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
-import com.bridgelabz.database.interfaces.{IChatService, IDatabaseService, IGetUserService, IGroupService, IMongoConfig, ISaveUserService}
+import com.bridgelabz.database.interfaces.{IChatService, IDatabaseService, IGetUserService, IGroupService, IDatabaseConfig, ISaveUserService}
 import com.typesafe.scalalogging.LazyLogging
 import org.bson.BsonType
 import org.mongodb.scala.Document
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 
-class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService
+class DatabaseService(databaseConfig: IDatabaseConfig) extends LazyLogging with IGetUserService with IChatService with IGroupService with ISaveUserService
   with IDatabaseService {
   implicit val system = ActorSystemFactory.system
   implicit val executor: ExecutionContext = system.dispatcher
@@ -57,7 +58,7 @@ class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUs
         }
         else
         {
-          val future = mongoConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
+          val future = databaseConfig.addUser(Some(length + 1),credentials.name,credentials.password,false)
           try{
             future.map(future => future)
             "Success"
@@ -112,7 +113,7 @@ class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUs
    */
   def saveChatMessage(sendMessageRequest: ChatCase) : String = {
     try {
-      val chatAddedFuture = mongoConfig.saveChatMessage(sendMessageRequest)
+      val chatAddedFuture = databaseConfig.saveChatMessage(sendMessageRequest)
       chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent"
     }
@@ -128,7 +129,7 @@ class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUs
 
   // Returns All the users present inside database in the form of future
   def getUsers() : Future[Seq[Document]] = {
-    mongoConfig.find()
+    databaseConfig.find()
   }
 
 
@@ -138,7 +139,7 @@ class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUs
    * @return : Future of users that are returned using find method from database
    */
   def getUsersUsingFilter(name : String) : Future[Seq[Document]] = {
-    mongoConfig.find(name)
+    databaseConfig.find(name)
   }
 
   /**
@@ -148,7 +149,7 @@ class DatabaseService(mongoConfig: IMongoConfig) extends LazyLogging with IGetUs
    */
   def saveToGroupChat(groupChatInfo: GroupChat) : String = {
     try{
-      val chatAddedFuture = mongoConfig.saveGroupChat(groupChatInfo)
+      val chatAddedFuture = databaseConfig.saveGroupChat(groupChatInfo)
       chatAddedFuture.map(chatAddedFuture => chatAddedFuture)
       "Message sent to group"
     }

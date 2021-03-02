@@ -19,40 +19,46 @@ import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Projections.excludeId
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat}
-import com.bridgelabz.database.interfaces.IMongoConfig
+import com.bridgelabz.database.interfaces.IDatabaseConfig
 import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.bson.codecs.{DEFAULT_CODEC_REGISTRY, Macros}
-import org.mongodb.scala.{Completed, Document, MongoClient, MongoCollection, MongoDatabase}
+import org.mongodb.scala.model.Updates.set
+import org.mongodb.scala.{Completed, Document, MongoClient, MongoCollection, MongoDatabase, result}
 import scala.concurrent.{ExecutionContext, Future}
 
-class MongoConfig extends IMongoConfig{
+class MongoConfig extends IDatabaseConfig {
 
-  val chatCodecProvider = Macros.createCodecProvider[ChatCase]()
-  val groupCodecProvider = Macros.createCodecProvider[GroupChat]()
-  val codecRegistry = CodecRegistries.fromRegistries(
-    CodecRegistries.fromProviders(chatCodecProvider,groupCodecProvider),
-    DEFAULT_CODEC_REGISTRY
-  )
-  implicit val system = ActorSystemFactory.system
-  implicit val executor: ExecutionContext = system.dispatcher
-  val host = sys.env("HOST")
-  val port = sys.env("MONGOPORT")
-  val url = s"mongodb://${host}:${port}"
-  val mongoClient: MongoClient = MongoClient(url)
-  val databaseName = sys.env("DATABASENAME")
-  // Getting mongodb database
-  val database: MongoDatabase = mongoClient.getDatabase(databaseName).withCodecRegistry(codecRegistry)
-  val registrationCollection = "users"
-  val chatCollection = "chatlogs"
-  val groupCollection = "groupchats"
-  // Getting mongodb collection
-  val collectionForUserRegistration: MongoCollection[Document] = database.getCollection(registrationCollection)
-  collectionForUserRegistration.drop()
-  val collectionForChat: MongoCollection[ChatCase] = database.getCollection[ChatCase](chatCollection)
-  collectionForChat.drop()
-  val collectionForGroup: MongoCollection[GroupChat] = database.getCollection[GroupChat](groupCollection)
-  collectionForGroup.drop()
+  var collectionForGroup: MongoCollection[GroupChat]
+  var collectionForUserRegistration: MongoCollection[Document]
+  var collectionForChat: MongoCollection[ChatCase]
 
+  def setUp(): Unit = {
+    val chatCodecProvider = Macros.createCodecProvider[ChatCase]()
+    val groupCodecProvider = Macros.createCodecProvider[GroupChat]()
+    val codecRegistry = CodecRegistries.fromRegistries(
+      CodecRegistries.fromProviders(chatCodecProvider,groupCodecProvider),
+      DEFAULT_CODEC_REGISTRY
+    )
+    implicit val system = ActorSystemFactory.system
+    implicit val executor: ExecutionContext = system.dispatcher
+    val host = sys.env("HOST")
+    val port = sys.env("MONGOPORT")
+    val url = s"mongodb://${host}:${port}"
+    val mongoClient: MongoClient = MongoClient(url)
+    val databaseName = sys.env("DATABASENAME")
+    // Getting mongodb database
+    val database: MongoDatabase = mongoClient.getDatabase(databaseName).withCodecRegistry(codecRegistry)
+    val registrationCollection = "users"
+    val chatCollection = "chatlogs"
+    val groupCollection = "groupchats"
+    // Getting mongodb collections
+    collectionForUserRegistration = database.getCollection(registrationCollection)
+    collectionForUserRegistration.drop()
+    collectionForChat = database.getCollection[ChatCase](chatCollection)
+    collectionForChat.drop()
+    collectionForGroup = database.getCollection[GroupChat](groupCollection)
+    collectionForGroup.drop()
+  }
   /**
    * To add user to Chat App System
    * @param id : Id of user
@@ -98,5 +104,41 @@ class MongoConfig extends IMongoConfig{
    */
   def find(name: String): Future[Seq[Document]] = {
     collectionForUserRegistration.find(equal("name",name)).projection(excludeId()).toFuture()
+  }
+
+  /**
+   *
+   * @param name : Name of user to search
+   * @return : Future[Seq[ChatCase]]
+   */
+  def findChat(name: String) : Future[Seq[ChatCase]] = {
+    collectionForChat.find(equal("groupChatName", name)).toFuture()
+  }
+
+  /**
+   *
+   * @param name : Name of user to search
+   * @return : Future[Seq[GroupChat]]
+   */
+  def findGroupUsingReceiver(name: String) : Future[Seq[GroupChat]] = {
+    collectionForGroup.find(equal("receiver", name)).toFuture()
+  }
+
+  /**
+   *
+   * @param name : Name of user to search
+   * @return : Future[Seq[GroupChat]]
+   */
+  def findGroupUsingSender(name: String) : Future[Seq[GroupChat]] = {
+    collectionForGroup.find(equal("sender", name)).toFuture()
+  }
+
+  /**
+   *
+   * @param name : Name of user to update
+   * @return : Future[result.UpdateResult]
+   */
+  def updateUser(name: String) : Future[result.UpdateResult] = {
+    collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
   }
 }
