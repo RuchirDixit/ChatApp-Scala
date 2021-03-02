@@ -24,7 +24,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.bridgelabz.actors.{ActorSystemFactory, EmailNotificationActor}
 import com.bridgelabz.caseclasses._
-import com.bridgelabz.database.interfaces.{IDatabaseService, IMongoConfig}
+import com.bridgelabz.database.interfaces.{IDatabaseService, IDatabaseConfig}
 import com.bridgelabz.database.SaveToDatabaseActor
 import com.bridgelabz.email.Email
 import com.bridgelabz.jwt.TokenAuthorization
@@ -33,13 +33,12 @@ import com.bridgelabz.services.interfaces.IUserManagementService
 import com.nimbusds.jose.JWSObject
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
-import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.Updates.set
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, TimeoutException}
 import scala.util.{Failure, Success}
 
-class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoConfig,databaseService: IDatabaseService) extends PlayJsonSupport with LazyLogging
+class UserManagementRoutes(service: IUserManagementService, databaseConfig: IDatabaseConfig,
+                           databaseService: IDatabaseService) extends PlayJsonSupport with LazyLogging
   with ChatCaseJsonProtocol with JsonResponseProtocol with GroupChatJsonProtocol {
   implicit val system = ActorSystemFactory.system
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -83,7 +82,7 @@ class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoCo
               (token, name) =>
                 val jwsObject = JWSObject.parse(token)
                 if (jwsObject.getPayload.toJSONObject.get("name").equals(name)) {
-                  val updateUserAsVerified = mongoConfig.collectionForUserRegistration.updateOne(equal("name", name), set("isVerified", true)).toFuture()
+                 val updateUserAsVerified = databaseConfig.updateUser(name)
                   onComplete(updateUserAsVerified) {
                     case Success(_) =>
                       logger.info("Successfully verified user!")
@@ -108,7 +107,7 @@ class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoCo
               val senderId = service.returnId(messageRequest.sender)
               val receiverId = service.returnId(messageRequest.receiver)
               val roomname = service.generateGroupChatName(messageRequest.sender, messageRequest.receiver, senderId.toString, receiverId)
-              val messagesByGroupName = mongoConfig.collectionForChat.find(equal("groupChatName", roomname)).toFuture()
+              val messagesByGroupName = databaseConfig.findChat(roomname)
               onComplete(messagesByGroupName) {
                 case Success(groupMessages) =>
                   logger.info("Successfully fetched roomname")
@@ -245,7 +244,7 @@ class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoCo
             (post & entity(as[GroupMessages])) { messageRequest =>
               try {
                 val groupname = messageRequest.groupName
-                val messagesByGroupName = mongoConfig.collectionForGroup.find(equal("receiver", groupname)).toFuture()
+                val messagesByGroupName = databaseConfig.findGroupUsingReceiver(groupname)
                 onComplete(messagesByGroupName) {
                   case Success(groupMessages) => complete(groupMessages)
                   case Failure(error) => complete(error)
@@ -264,13 +263,13 @@ class UserManagementRoutes(service: IUserManagementService,mongoConfig: IMongoCo
           /**
            * It displays all the group names that user can send messages to
            * @input : It accepts sender name decoded from token
-           *  @returns: All the messages with sender, group name and messages
+           *  @returns: All the messages with sender, group name and message s
            */
           path("viewGroups") {
             post {
               TokenAuthorization.authenticated { token =>
                 val sender = token.values.toList.last.toString()
-                val groupsOfSender = mongoConfig.collectionForGroup.find(equal("sender", sender)).toFuture()
+                val groupsOfSender = databaseConfig.findGroupUsingSender(sender)
                 logger.info("groups in which sender is added: " + groupsOfSender)
                 complete(groupsOfSender)
               }
