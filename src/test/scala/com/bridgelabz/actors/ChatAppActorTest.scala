@@ -18,7 +18,8 @@ package com.bridgelabz.actors
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestActors, TestKit, TestProbe}
 import com.bridgelabz.caseclasses.ChatCase
-import com.bridgelabz.database.SaveToDatabaseActor
+import com.bridgelabz.database.{DatabaseService, MongoConfig, SaveToDatabaseActor}
+import com.bridgelabz.services.UserManagementService
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
@@ -30,6 +31,9 @@ class ChatAppActorTest extends TestKit(ActorSystem("ChatApp-test")) with Implici
   with AnyWordSpecLike
   with Matchers
   with BeforeAndAfterAll with LazyLogging{
+  val mongoConfig = new MongoConfig
+  val databaseService = new DatabaseService(mongoConfig)
+  val userManagementService = new UserManagementService(databaseService)
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   "An Email notification actor" must {
     "expect no message" in {
@@ -41,7 +45,7 @@ class ChatAppActorTest extends TestKit(ActorSystem("ChatApp-test")) with Implici
   }
   "Save to database actor" must {
     "expect response" in {
-      val saveToDatabaseActor = system.actorOf(Props[SaveToDatabaseActor], "saveActor")
+      val saveToDatabaseActor = system.actorOf(Props(new SaveToDatabaseActor(userManagementService)), "saveActor")
       val chatChatData = ChatCase(Some("ruchir99@gmail.com"),"xyz@gmail.com","test actor",Some("test actor group"))
       saveToDatabaseActor ! chatChatData
       expectMsg("Message added")
