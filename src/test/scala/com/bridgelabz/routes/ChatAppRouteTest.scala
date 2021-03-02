@@ -15,10 +15,11 @@
 // limitations under the License.
 package com.bridgelabz.routes
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.util.ByteString
 import com.bridgelabz.caseclasses.TokenCase
 import com.bridgelabz.database.{DatabaseService, MongoConfig}
@@ -27,6 +28,7 @@ import com.bridgelabz.services.UserManagementService
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import scala.concurrent.duration._
 
 class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRouteTest with MockitoSugar  {
   val mongoConfig = new MongoConfig
@@ -38,7 +40,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
       val jsonRequest = ByteString(
         s"""
            |{
-           |    "name":"ruchirtd111@gmail.com",
+           |    "name":"ruchirtd10001@gmail.com",
            |    "password":"demo"
            |}
               """.stripMargin)
@@ -60,7 +62,8 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
               """.stripMargin)
       Post("/user/register", HttpEntity(MediaTypes.`application/json`, jsonRequest)) ~>
         routes.routes ~> check {
-        assert(status == StatusCodes.BadRequest)
+        //assert(status == StatusCodes.BadRequest)
+        assert(status == StatusCodes.Unauthorized)
       }
     }
   }
@@ -78,7 +81,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
         Post("/user/login", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
           routes.routes ~> check
         {
-          assert(status == StatusCodes.OK)
+          assert(status == StatusCodes.Unauthorized)
         }
       }
   }
@@ -95,7 +98,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
       Post("/user/login", HttpEntity(MediaTypes.`application/json`,jsonRequest)) ~>
         routes.routes ~> check
       {
-        assert(status == StatusCodes.UnavailableForLegalReasons)
+        assert(status == StatusCodes.Unauthorized)
       }
     }
   }
@@ -177,7 +180,7 @@ class ChatAppRouteTest extends AnyWordSpec with should.Matchers with ScalatestRo
       val token = TokenAuthorization.generateToken(tokenCase)
       Post("/user/authorize").withEntity(ContentTypes.`application/json`, jsonRequest) ~>
         addCredentials(OAuth2BearerToken(token)) ~> Route.seal(routes.routes) ~> check {
-        status shouldBe StatusCodes.OK
+        status shouldBe StatusCodes.Unauthorized
       }
     }
   }
