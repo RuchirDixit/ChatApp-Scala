@@ -15,6 +15,7 @@
 // limitations under the License.
 package com.bridgelabz.services
 
+import scala.util.control.Breaks._
 import com.bridgelabz.actors.ActorSystemFactory
 import com.bridgelabz.caseclasses.{ChatCase, GroupChat, User}
 import com.bridgelabz.database.interfaces.IDatabaseService
@@ -35,28 +36,31 @@ class UserManagementService(databaseService: IDatabaseService) extends LazyLoggi
    */
   def userLogin(loginRequest: User): Future[String] = {
     databaseService.getUsersUsingFilter(loginRequest.name).map(users => {
-      users.foreach(document => document.foreach(bsonObject =>
-        if(bsonObject._2.getBsonType() == BsonType.STRING) {
-          if(bsonObject._2.asString().getValue.equals(loginRequest.name)){
-            logger.info("Inside if value (name):" + bsonObject._2.asString().getValue)
-            users.foreach(document => document.foreach(bsonStringObject =>
-              if(bsonStringObject._2.getBsonType() == BsonType.STRING){
-                if(bsonStringObject._2.asString().getValue.equals(loginRequest.password)){
-                  logger.info("Inside if value (password):" + bsonStringObject._2.asString().getValue)
-                  users.foreach(document => document.foreach(bsonObject =>
-                    if(bsonObject._2.getBsonType() == BsonType.BOOLEAN){
-                      if(!bsonObject._2.asBoolean().getValue){
-                        return Future("User Not verified")
+      breakable{
+        users.foreach(document => document.foreach(bsonObject =>
+          if(bsonObject._2.getBsonType() == BsonType.STRING) {
+            if(bsonObject._2.asString().getValue.equals(loginRequest.name)){
+              logger.info("Inside if value (name):" + bsonObject._2.asString().getValue)
+              users.foreach(document => document.foreach(bsonStringObject =>
+                if(bsonStringObject._2.getBsonType() == BsonType.STRING){
+                  if(bsonStringObject._2.asString().getValue.equals(loginRequest.password)){
+                    logger.info("Inside if value (password):" + bsonStringObject._2.asString().getValue)
+                    users.foreach(document => document.foreach(bsonObject =>
+                      if(bsonObject._2.getBsonType() == BsonType.BOOLEAN){
+                        if(!bsonObject._2.asBoolean().getValue){
+                          Future("User Not verified")
+                          break
+                        }
                       }
-                    }
-                  ))
-                  return Future("Login Successful")
+                    ))
+                    Future("Login Successful")
+                  }
                 }
-              }
-            ))
+              ))
+            }
           }
-        }
-      ))
+        ))
+      }
       "User not found"
     })
   }
